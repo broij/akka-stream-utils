@@ -1,0 +1,13 @@
+.DS_Store
+.bsp
+.idea
+**.iml
+.gradle
+.vscode
+**/build
+target/
+**.ipr
+**.iws
+.metals
+metals.sbt
+.bloop
