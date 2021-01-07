@@ -34,7 +34,7 @@
 This library provides a set of operators for akka-stream. Some of them come as an improvement of the standard operators packed with akka-stream whereas others implement new functionalities.
 
 # Usage
-The library is available on maven central (in progress). To use it in a project, a dependency to this library must be setup. Projects using this library must also setup a dependency on the akka-stream version of their choice. Note however that each release was tested on one particular version of akka-stream, which is given in the table here below.
+The library is available on [maven central](https://mvnrepository.com/artifact/be.broij/akka-stream-utils). To use it in a project, a dependency to this library must be setup. Projects using this library must also setup a dependency on the akka-stream version of their choice. Note however that each release was tested on one particular version of akka-stream, which is given in the table here below.
 
 Release | Tested version
 --------|--------------------
