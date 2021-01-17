@@ -34,7 +34,7 @@
 This library provides a set of operators for akka-stream. Some of them come as an improvement of the standard operators packed with akka-stream whereas others implement new functionalities.
 
 # Usage
-The library is available on [maven central](https://mvnrepository.com/artifact/be.broij/akka-stream-utils). To use it in a project, a dependency to this library must be setup. Projects using this library must also setup a dependency on the akka-stream version of their choice. Note however that each release was tested on one particular version of akka-stream, which is given in the table here below.
+The library is available on [maven central](https://mvnrepository.com/artifact/be.broij/akka-stream-utils). To use it in a project, a dependency to the chosen version of akka-stream must be setup. Note that each release was tested on one particular version of akka-stream, which is given in the table here below.
 
 Release | Tested version
 --------|--------------------
@@ -54,7 +54,7 @@ Source(List(Source(List("h", "el", "lo")), Source.empty, Source.single("w"), Sou
   .runForeach(System.out.print)
 ```
 
-Some of the operators, namely [window](#window) and [slidingWindow](#slidingWindow), don't have any implicit conversions available. This is by design: these operators were conceived as basic blocks that can be used to ease the process of creating new types of windowing operators. They can be used via their factory methods. Other operators for which implicit conversions are available can also be used that way.
+Some of the operators, namely [window](#window) and [slidingWindow](#slidingWindow), don't have any implicit conversions available and can only be instanciated via their factory methods. This is by design: these operators were conceived as basic blocks that can be used to ease the process of creating new types of operators. The other operators for which implicit conversions are available can also be instanciated that way.
 ```
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Source
@@ -68,7 +68,7 @@ Source(List(Source(List("h", "el", "lo")), Source.empty, Source.single("w"), Sou
 ```
 
 # Operators
-The specification of each operators provided by the library is given in the following sections. In addition, one can refer to the [tests](/src/test/scala/be/broij/akka/stream/OperatorsSpec.scala) in order to have a partical understanding on how to use the respective operators and clear out any ambiguïty.
+The specification of each operators provided by the library is given in the following sections. In addition, one can refer to the [tests](/src/test/scala/be/broij/akka/stream/OperatorsSpec.scala) in order to have a practical understanding on how to use the respective operators and clear out any ambiguïty.
 
 ## DistinctKey
 `DistinctKey[T, K](keyOf: T => K): Flow[T, T, NotUsed]`
