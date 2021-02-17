@@ -38,7 +38,7 @@ object BroadcastWaitSlowest {
   case class Pull(consumerId: BigInt, itemId: BigInt, replyTo: ActorRef[Response]) extends Command
 
   class Producer[T](source: Source[T, NotUsed], bufferSize: Int)(implicit materializer: Materializer) {
-    protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T])(Keep.right).run()
+    protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
     protected lazy val registeredConsumers = mutable.Set.empty[BigInt]
     protected lazy val unregisteredConsumers = mutable.Set.empty[BigInt]
     protected lazy val buffer = Array.ofDim[Future[Option[T]]](bufferSize)
@@ -93,7 +93,7 @@ object BroadcastWaitSlowest {
     }
 
     protected def resolvePendingPulls(latestItemId: BigInt)(implicit executionContext: ExecutionContext): Unit = {
-      val completedPulls = pendingPulls.rangeTo(Pull(null, latestItemId, null))
+      val completedPulls = pendingPulls.to(Pull(null, latestItemId, null))
       completedPulls.foreach {
         case Pull(consumerId, itemId, replyTo) => buffer((itemId % bufferSize).toInt).onComplete {
           case Success(Some(item)) => replyTo ! Offer(itemId, item)

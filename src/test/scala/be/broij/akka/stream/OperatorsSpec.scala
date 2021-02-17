@@ -10,12 +10,16 @@ import akka.testkit.{ImplicitSender, TestKit}
 import be.broij.akka.stream.SourceExtensions.{AnycastSourceConversion, AnycastWithPrioritiesSourceConversion, BalanceSourceConversion, BroadcastSourceConversion, CaptureMaterializedValuesSourceConversion, ConcatenateSourceConversion, DistinctKeySourceConversion, FilterConsecutivesSourceConversion, JoinFairlySourceConversion, JoinSourceConversion, JoinWithPrioritiesSourceConversion, PartitionSourceConversion, ReorderSourceConversion, SwitchSourceConversion, TimedSlidingWindowSourceConversion, TimedWindowSourceConversion, WeightedSlidingWindowSourceConversion, WeightedWindowSourceConversion}
 import be.broij.akka.stream.operators.{SlidingWindow, Window}
 import com.typesafe.config.ConfigFactory
+
 import java.time.ZonedDateTime
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import scala.math.Numeric.IntIsIntegral
+
+import scala.annotation.tailrec
 import scala.concurrent.duration.DurationDouble
+import scala.collection.immutable.Seq
+import scala.math.Numeric.IntIsIntegral
 import scala.util.Random
 
 class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
@@ -68,9 +72,9 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       do {
         probe.request(1)
         probe.expectNextOrComplete() match {
-          case Left(_) if last != 3 => assert(false)
+          case Left(_) if last != 3 => assert(condition = false)
           case Right(e) =>
-            if (e < last) assert(false)
+            if (e < last) assert(condition = false)
             else last = e
         }
       } while (last != 3)
@@ -85,12 +89,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
 
     "fail when a substream fails" in {
+      @tailrec
       def validate(probe: TestSubscriber.Probe[Int], i: Int): Assertion =
         if (i > 5) {
-          assert(false)
+          assert(condition = false)
         } else {
           probe.expectNextOrError() match {
-            case Left(_) => assert(true)
+            case Left(_) => assert(condition = true)
             case Right(_) => validate(probe, i + 1)
           }
         }
@@ -124,9 +129,10 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
 
     "fail when a substream fails" in {
+      @tailrec
       def validate(probe: TestSubscriber.Probe[Int]): Assertion =
         probe.expectNextOrError() match {
-          case Left(_) => assert(true)
+          case Left(_) => assert(condition = true)
           case Right(_) => validate(probe)
         }
 
@@ -158,9 +164,10 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
 
     "fail when a substream fails" in {
+      @tailrec
       def validate(probe: TestSubscriber.Probe[Int]): Assertion =
         probe.expectNextOrError() match {
-          case Left(_) => assert(true)
+          case Left(_) => assert(condition = true)
           case Right(_) => validate(probe)
         }
 
@@ -192,9 +199,10 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
 
     "fail when a substream fails" in {
+      @tailrec
       def validate(probe: TestSubscriber.Probe[Int]): Assertion =
         probe.expectNextOrError() match {
-          case Left(_) => assert(true)
+          case Left(_) => assert(condition = true)
           case Right(_) => validate(probe)
         }
 

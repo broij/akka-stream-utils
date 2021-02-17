@@ -5,16 +5,17 @@ import akka.stream.scaladsl.Flow
 import be.broij.akka.stream.operators.SlidingWindow
 import java.time.{Duration, ZonedDateTime}
 import java.util.concurrent.TimeUnit
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.immutable.Seq
+import scala.collection.mutable.ListBuffer
 
 object TimedSlidingWindow {
   class Frame[T](payload: ListBuffer[T])(maxPeriod: FiniteDuration, timeOf: T => ZonedDateTime)
       extends TimedWindow.Frame[T](payload)(maxPeriod, timeOf) with SlidingWindow.Frame[T] {
-    override def add(item: T): Frame[T] = new Frame(payload.append(item))(maxPeriod, timeOf)
+    override def add(item: T): Frame[T] = new Frame(payload += item)(maxPeriod, timeOf)
 
     override def shrink(item: T): Frame[T] = {
-      val newPayload = payload.append(item)
+      val newPayload = payload += item
       var newPeriod = timeDiff(item)
 
       while (newPayload.nonEmpty && newPeriod > maxPeriod) {

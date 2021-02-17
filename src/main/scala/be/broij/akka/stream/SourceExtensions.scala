@@ -11,6 +11,7 @@ import be.broij.akka.stream.operators.flatten.{Concatenate, Join, JoinFairly, Jo
 import be.broij.akka.stream.operators.window.{TimedSlidingWindow, TimedWindow, WeightedSlidingWindow, WeightedWindow}
 import java.time.ZonedDateTime
 import scala.concurrent.duration._
+import scala.collection.immutable.Seq
 
 object SourceExtensions {
   implicit class BroadcastSourceConversion[Out](source: Source[Out, NotUsed]) {
@@ -198,7 +199,7 @@ object SourceExtensions {
      * This function is an implicit conversion calling [[Reorder.apply]]
      */
     def reorder[F <: Frame[In]](implicit frameFactory: FrameFactory[In, F]): Source[In, Mat] =
-      source.via(Reorder.apply)
+      source.via(Reorder.apply(implicitly[Ordering[In]], frameFactory))
 
     /**
      * This function is an implicit conversion calling [[Reorder.apply]]

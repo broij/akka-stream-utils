@@ -21,8 +21,7 @@ ThisBuild / publishMavenStyle := true
 ThisBuild / publishArtifact in Test := false
 
 ThisBuild / scalaVersion := "2.13.4"
-ThisBuild / crossScalaVersions := List()
-
+ThisBuild / crossScalaVersions := List("2.12.13", "2.13.4")
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")

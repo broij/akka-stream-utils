@@ -3,29 +3,32 @@ package be.broij.akka.stream.operators.window
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import be.broij.akka.stream.operators.SlidingWindow
+import scala.collection.immutable.Seq
 import scala.collection.mutable.ListBuffer
 
 object WeightedSlidingWindow {
-  class Frame[T, W: Numeric](payload: ListBuffer[T], totalWeight: W)(maxWeight: W, weightOf: T => W)
+  class Frame[T, W](payload: ListBuffer[T], totalWeight: W)(maxWeight: W, weightOf: T => W)
+                   (implicit numeric: Numeric[W])
       extends WeightedWindow.Frame[T, W](payload, totalWeight)(maxWeight, weightOf) with SlidingWindow.Frame[T] {
     override def add(item: T): Frame[T, W] =
       new Frame(
-        payload.append(item),
-        Numeric[W].plus(totalWeight, weightOf(item))
+        payload += item,
+        numeric.plus(totalWeight, weightOf(item))
       )(maxWeight, weightOf)
 
     override def shrink(item: T): Frame[T, W] = {
-      val newPayload = payload.append(item)
-      var newTotalWeight = Numeric[W].plus(totalWeight, weightOf(item))
-      while (newPayload.nonEmpty && Numeric[W].gt(newTotalWeight, maxWeight)) {
-        newTotalWeight = Numeric[W].minus(newTotalWeight, weightOf(newPayload.remove(0)))
+      val newPayload = payload += item
+      var newTotalWeight = numeric.plus(totalWeight, weightOf(item))
+      while (newPayload.nonEmpty && numeric.gt(newTotalWeight, maxWeight)) {
+        newTotalWeight = numeric.minus(newTotalWeight, weightOf(newPayload.remove(0)))
       }
       new Frame(newPayload, newTotalWeight)(maxWeight, weightOf)
     }
   }
 
-  class FrameFactory[T, W: Numeric](maxWeight: W, weightOf: T => W) extends SlidingWindow.FrameFactory[T, Frame[T, W]] {
-    override def apply(): Frame[T, W] = new Frame(ListBuffer.empty, Numeric[W].zero)(maxWeight, weightOf)
+  class FrameFactory[T, W](maxWeight: W, weightOf: T => W)
+                          (implicit numeric: Numeric[W]) extends SlidingWindow.FrameFactory[T, Frame[T, W]] {
+    override def apply(): Frame[T, W] = new Frame(ListBuffer.empty, numeric.zero)(maxWeight, weightOf)
   }
 
   /**

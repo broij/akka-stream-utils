@@ -36,7 +36,7 @@ object BroadcastWaitFastest {
   case class Pull(itemId: BigInt, replyTo: ActorRef[Response]) extends Command
 
   class Producer[T](source: Source[T, NotUsed], bufferSize: Int)(implicit materializer: Materializer) {
-    protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T])(Keep.right).run()
+    protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
     protected lazy val buffer = Array.ofDim[Future[Option[T]]](bufferSize)
 
     protected def fillBufferUntil(requestId: BigInt, latestItemId: BigInt): BigInt =
@@ -46,7 +46,7 @@ object BroadcastWaitFastest {
         val tmp = requestId - bufferSize + 1
         val start = if (latestItemId < tmp) tmp else latestItemId + 1
         for (i <- start to requestId) {
-          val item = stream.pull
+          val item = stream.pull()
           buffer((i % bufferSize).toInt) = item
         }
         requestId

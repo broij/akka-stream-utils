@@ -5,6 +5,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import be.broij.akka.stream.operators.Window.{Frame, FrameFactory}
+import scala.collection.immutable.Seq
 
 class Window[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F])
     extends GraphStage[FlowShape[T, Seq[T]]] {
@@ -80,10 +81,10 @@ object Window {
   }
 
   /**
-    * Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. To 
-    * build the windows, the flow consumes the elements one after the others. It starts with an empty frame F obtained 
-    * with the FrameFactory and tries to add each element it consumes to that frame. If an element can’t be added to the 
-    * frame, the window it represents is emitted as a sequence of elements and a new frame containing that element is 
+    * Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. To
+    * build the windows, the flow consumes the elements one after the others. It starts with an empty frame F obtained
+    * with the FrameFactory and tries to add each element it consumes to that frame. If an element can’t be added to the
+    * frame, the window it represents is emitted as a sequence of elements and a new frame containing that element is
     * created with the FrameFactory to pursue the process of windowing the stream.
     */
   def apply[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, Seq[T], NotUsed] =

@@ -3,24 +3,26 @@ package be.broij.akka.stream.operators.window
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import be.broij.akka.stream.operators.Window
+import scala.collection.immutable.Seq
 import scala.collection.mutable.ListBuffer
 
 object WeightedWindow {
-  class Frame[T, W: Numeric](payload: ListBuffer[T], totalWeight: W)(maxWeight: W, weightOf: T => W)
-      extends Window.Frame[T] {
-    override def canAdd(item: T): Boolean = Numeric[W].lteq(Numeric[W].plus(totalWeight, weightOf(item)), maxWeight)
+  class Frame[T, W](payload: ListBuffer[T], totalWeight: W)(maxWeight: W, weightOf: T => W)
+                   (implicit numeric: Numeric[W]) extends Window.Frame[T] {
+    override def canAdd(item: T): Boolean = numeric.lteq(numeric.plus(totalWeight, weightOf(item)), maxWeight)
     override def add(item: T): Frame[T, W] =
       new Frame(
-        payload.append(item),
-        Numeric[W].plus(totalWeight, weightOf(item))
+        payload += item,
+        numeric.plus(totalWeight, weightOf(item))
       )(maxWeight, weightOf)
 
-    override def payloadSeq: Seq[T] = payload.toSeq
+    override def payloadSeq: Seq[T] = payload.toList
     override def nonEmpty: Boolean = payload.nonEmpty
   }
 
-  class FrameFactory[T, W: Numeric](maxWeight: W, weightOf: T => W) extends Window.FrameFactory[T, Frame[T, W]] {
-    override def apply(): Frame[T, W] = new Frame(ListBuffer.empty, Numeric[W].zero)(maxWeight, weightOf)
+  class FrameFactory[T, W](maxWeight: W, weightOf: T => W)
+                          (implicit numeric: Numeric[W]) extends Window.FrameFactory[T, Frame[T, W]] {
+    override def apply(): Frame[T, W] = new Frame(ListBuffer.empty, numeric.zero)(maxWeight, weightOf)
     override def apply(item: T): Frame[T, W] = new Frame(ListBuffer(item), weightOf(item))(maxWeight, weightOf)
   }
 

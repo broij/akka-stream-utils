@@ -15,5 +15,5 @@ object FilterConsecutives {
         if (shouldFilter(current, next)) (Some(next), true) 
         else (current, false)
     }.filter(_._2)
-    .mapConcat(_._1.toSeq)
+    .mapConcat(_._1.toList)
 }

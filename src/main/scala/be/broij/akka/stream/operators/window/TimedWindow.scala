@@ -5,8 +5,9 @@ import akka.stream.scaladsl.Flow
 import be.broij.akka.stream.operators.Window
 import java.time.{Duration, ZonedDateTime}
 import java.util.concurrent.TimeUnit
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.immutable.Seq
+import scala.collection.mutable.ListBuffer
 
 object TimedWindow {
   class Frame[T](payload: ListBuffer[T])(maxPeriod: FiniteDuration, timeOf: T => ZonedDateTime)
@@ -17,8 +18,8 @@ object TimedWindow {
           maxPeriod >= FiniteDuration(Duration.between(timeOf(start), timeOf(item)).toNanos, TimeUnit.NANOSECONDS)
       }
 
-    override def add(item: T): Window.Frame[T] = new Frame(payload.append(item))(maxPeriod, timeOf)
-    override def payloadSeq: Seq[T] = payload.toSeq
+    override def add(item: T): Window.Frame[T] = new Frame(payload += item)(maxPeriod, timeOf)
+    override def payloadSeq: Seq[T] = payload.toList
     override def nonEmpty: Boolean = payload.nonEmpty
   }
 

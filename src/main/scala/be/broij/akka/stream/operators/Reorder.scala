@@ -18,7 +18,7 @@ object Reorder {
     * windows, the flow uses the flow produced by [[Window.apply]]. One can refer to its specification to get detailed 
     * information about the role of the parameters that weren't covered in this specification.
     */
-  def apply[T: Ordering, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, T, NotUsed] = 
+  def apply[T: Ordering, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, T, NotUsed] =
     Flow[T].via(Window(frameFactory)).mapConcat(_.sorted)
 
   /**

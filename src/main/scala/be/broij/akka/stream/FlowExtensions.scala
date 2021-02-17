@@ -9,6 +9,7 @@ import be.broij.akka.stream.operators.window.{TimedSlidingWindow, TimedWindow, W
 import be.broij.akka.stream.operators.Window.{Frame, FrameFactory}
 import java.time.ZonedDateTime
 import scala.concurrent.duration._
+import scala.collection.immutable.Seq
 
 object FlowExtensions {
   implicit class ConcatenateFlowConversion[In, Out, Mat](flow: Flow[In, Source[Out, NotUsed], Mat]) {
@@ -157,7 +158,7 @@ object FlowExtensions {
       * This function is an implicit conversion calling [[Reorder.apply]]
       */
     def reorder[F <: Frame[Out]](implicit frameFactory: FrameFactory[Out, F]): Flow[In, Out, Mat] =
-      flow.via(Reorder.apply)
+      flow.via(Reorder.apply(implicitly[Ordering[Out]], frameFactory))
 
     /**
       * This function is an implicit conversion calling [[Reorder.apply]]

@@ -15,7 +15,7 @@ object OneToOne {
   case class FetchResult[T](result: Try[Option[T]]) extends Command
 
   abstract class Producer[T, C <: Consumer](source: Source[T, NotUsed])(implicit materializer: Materializer) {
-    protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T])(Keep.right).run()
+    protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
     protected lazy val memory = mutable.Map.empty[BigInt, Offer[T]]
 
     protected def completedBehavior(): Behavior[Command] =
