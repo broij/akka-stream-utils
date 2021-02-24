@@ -18,21 +18,20 @@ class CaptureMaterializedValues[T, M](implicit mat: Materializer)
     inheritedAttributes: Attributes
   ): (GraphStageLogic, Source[M, NotUsed]) = {
     val logic = new GraphStageLogic(shape) {
-      val (queue, matVals) = Source.queue[M](1, OverflowStrategy.backpressure).preMaterialize()(mat)
-      var matValsOn = true
+      val (queue, matVals) = Source.queue[M](0, OverflowStrategy.backpressure).preMaterialize()(mat)
       setHandler(in, new InHandler {
         override def onPush(): Unit = {
           val (matVal, source) = grab(in).preMaterialize()(mat)
-          if (matValsOn) queue.offer(matVal).onComplete {
+          queue.offer(matVal).onComplete {
             getAsyncCallback[Try[QueueOfferResult]] {
               case Success(QueueClosed) | Success(QueueOfferResult.Failure(_)) | Failure(_) =>
-                matValsOn = false
+                setHandler(in, new InHandler {
+                  override def onPush(): Unit = push(out, grab(in).preMaterialize()(mat)._2)
+                })
                 push(out, source)
-              case _ =>
-                push(out, source)
+              case _ => push(out, source)
             }.invoke
           }(subFusingMaterializer.executionContext)
-          else push(out, source)
         }
 
         override def onUpstreamFinish(): Unit = {
