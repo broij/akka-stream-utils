@@ -8,7 +8,7 @@ import akka.stream.scaladsl.Source
 import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import be.broij.akka.stream.operators.diverge.Anycast.Producer
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Command, ConsumerLogic, Response}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Request, ConsumerLogic, Response}
 import be.broij.akka.stream.operators.diverge.OneToOne.Pull
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -20,12 +20,12 @@ class Anycast[T](source: Source[T, NotUsed], val restartSource: Boolean, val bas
   implicit lazy val executionContext: ExecutionContext = actorSystem.dispatcher
   protected lazy val out: Outlet[T] = Outlet[T]("anycast.out")
 
-  override protected def producerBehavior(): Behavior[Command] = Producer(source).behavior()
+  override protected def producerBehavior(): Behavior[Request] = Producer(source).behavior()
   def shape: SourceShape[T] = SourceShape(out)
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new ConsumerLogic(this) {
-      override protected def onPullCommand(replyTo: ActorRef[Response]): Command = Pull(consumerId, nextItemId, replyTo)
+      override protected def onPullCommand(replyTo: ActorRef[Response]): Request = Pull(consumerId, nextItemId, replyTo)
       override def consumer(): BehaviorBased.Consumer = BaseConsumer(consumerId)
     }
 }

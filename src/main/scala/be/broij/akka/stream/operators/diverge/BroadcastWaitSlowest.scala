@@ -8,7 +8,7 @@ import akka.actor.typed.scaladsl.adapter.ClassicActorSystemOps
 import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
 import akka.stream.scaladsl.{Keep, Sink, SinkQueueWithCancel, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Closed, Command, ConsumerLogic, Fail, Offer, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Closed, Request, ConsumerLogic, Fail, Offer, Register, Registered, Response, Unregister, Unregistered}
 import be.broij.akka.stream.operators.diverge.BroadcastWaitSlowest.{Producer, Pull}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -24,18 +24,18 @@ class BroadcastWaitSlowest[T](source: Source[T, NotUsed], val restartSource: Boo
   implicit lazy val executionContext: ExecutionContext = actorSystem.dispatcher
   protected lazy val out: Outlet[T] = Outlet[T]("broadcastWaitSlowest.out")
 
-  override protected def producerBehavior(): Behavior[Command] = Producer(source, bufferSize).behavior()
+  override protected def producerBehavior(): Behavior[Request] = Producer(source, bufferSize).behavior()
   def shape: SourceShape[T] = SourceShape(out)
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new ConsumerLogic(this) {
-      override protected def onPullCommand(replyTo: ActorRef[Response]): Command = Pull(consumerId, nextItemId, replyTo)
+      override protected def onPullCommand(replyTo: ActorRef[Response]): Request = Pull(consumerId, nextItemId, replyTo)
       override def consumer(): BehaviorBased.Consumer = BaseConsumer(consumerId)
     }
 }
 
 object BroadcastWaitSlowest {
-  case class Pull(consumerId: BigInt, itemId: BigInt, replyTo: ActorRef[Response]) extends Command
+  case class Pull(consumerId: BigInt, itemId: BigInt, replyTo: ActorRef[Response]) extends Request
 
   class Producer[T](source: Source[T, NotUsed], bufferSize: Int)(implicit materializer: Materializer) {
     protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
@@ -118,7 +118,7 @@ object BroadcastWaitSlowest {
       latestItemId + toFetch
     }
 
-    def behavior(consumerCount: BigInt = 0, latestItemId: BigInt = -1): Behavior[Command] =
+    def behavior(consumerCount: BigInt = 0, latestItemId: BigInt = -1): Behavior[Request] =
       Behaviors.receive {
         case (context, Pull(consumerId, requestId, replyTo))
             if registeredConsumers.contains(consumerId) && !unregisteredConsumers.contains(consumerId) =>

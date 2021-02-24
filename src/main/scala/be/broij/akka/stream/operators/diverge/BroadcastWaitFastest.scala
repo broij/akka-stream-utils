@@ -8,7 +8,7 @@ import akka.actor.typed.scaladsl.adapter.ClassicActorSystemOps
 import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
 import akka.stream.scaladsl.{Keep, Sink, SinkQueueWithCancel, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Command, ConsumerLogic, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Request, ConsumerLogic, Register, Registered, Response, Unregister, Unregistered}
 import be.broij.akka.stream.operators.diverge.Broadcast.forwardItemTo
 import be.broij.akka.stream.operators.diverge.BroadcastWaitFastest.{Producer, Pull}
 import scala.concurrent.{ExecutionContext, Future}
@@ -22,18 +22,18 @@ class BroadcastWaitFastest[T](source: Source[T, NotUsed], val restartSource: Boo
   implicit lazy val executionContext: ExecutionContext = actorSystem.dispatcher
   protected lazy val out: Outlet[T] = Outlet[T]("broadcastWaitFastest.out")
 
-  override protected def producerBehavior(): Behavior[Command] = Producer(source, bufferSize).behavior()
+  override protected def producerBehavior(): Behavior[Request] = Producer(source, bufferSize).behavior()
   def shape: SourceShape[T] = SourceShape(out)
 
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new ConsumerLogic(this) {
-      override protected def onPullCommand(replyTo: ActorRef[Response]): Command = Pull(nextItemId, replyTo)
+      override protected def onPullCommand(replyTo: ActorRef[Response]): Request = Pull(nextItemId, replyTo)
       override def consumer(): BehaviorBased.Consumer = BaseConsumer(consumerId)
     }
 }
 
 object BroadcastWaitFastest {
-  case class Pull(itemId: BigInt, replyTo: ActorRef[Response]) extends Command
+  case class Pull(itemId: BigInt, replyTo: ActorRef[Response]) extends Request
 
   class Producer[T](source: Source[T, NotUsed], bufferSize: Int)(implicit materializer: Materializer) {
     protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
@@ -52,7 +52,7 @@ object BroadcastWaitFastest {
         requestId
       }
 
-    def behavior(latestItemId: BigInt = -1): Behavior[Command] =
+    def behavior(latestItemId: BigInt = -1): Behavior[Request] =
       Behaviors.receive {
         case (context, Pull(requestId, replyTo)) =>
           val itemId = fillBufferUntil(requestId, latestItemId)

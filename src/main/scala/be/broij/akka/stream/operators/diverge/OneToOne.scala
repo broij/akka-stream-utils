@@ -5,20 +5,20 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Keep, Sink, SinkQueueWithCancel, Source}
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{Closed, Command, Consumer, Fail, Offer, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{Closed, Request, Consumer, Fail, Offer, Register, Registered, Response, Unregister, Unregistered}
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 object OneToOne {
-  case class Pull(consumerId: BigInt, itemId: BigInt, replyTo: ActorRef[Response]) extends Command
-  case object FetchItem extends Command
-  case class FetchResult[T](result: Try[Option[T]]) extends Command
+  case class Pull(consumerId: BigInt, itemId: BigInt, replyTo: ActorRef[Response]) extends Request
+  case object FetchItem extends Request
+  case class FetchResult[T](result: Try[Option[T]]) extends Request
 
   abstract class Producer[T, C <: Consumer](source: Source[T, NotUsed])(implicit materializer: Materializer) {
     protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
     protected lazy val memory = mutable.Map.empty[BigInt, Offer[T]]
 
-    protected def completedBehavior(): Behavior[Command] =
+    protected def completedBehavior(): Behavior[Request] =
       Behaviors.receive {
         case (_, Pull(consumerId, itemId, replyTo)) =>
           memory.get(consumerId).filter(_.itemId == itemId) match {
@@ -32,7 +32,7 @@ object OneToOne {
         case _ => Behaviors.same
       }
 
-    protected def failedBehavior(fail: Fail): Behavior[Command] =
+    protected def failedBehavior(fail: Fail): Behavior[Request] =
       Behaviors.receive {
         case (_, Pull(consumerId, itemId, replyTo)) =>
           memory.get(consumerId).filter(_.itemId == itemId) match {
@@ -46,7 +46,7 @@ object OneToOne {
         case _ => Behaviors.same
       }
 
-    def behavior(queueAvailable: Boolean = true, bufferizedItem: Option[T] = None): Behavior[Command] =
+    def behavior(queueAvailable: Boolean = true, bufferizedItem: Option[T] = None): Behavior[Request] =
       Behaviors.receive {
         case (context, request @ Pull(consumerId, itemId, replyTo)) =>
           memory.get(consumerId).filter(_.itemId == itemId) match {

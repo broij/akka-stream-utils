@@ -8,7 +8,7 @@ import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
 import akka.stream.scaladsl.Source
 import akka.stream.stage.{GraphStage, GraphStageLogic}
 import be.broij.akka.stream.operators.diverge.AnycastWithPriorities.{Consumer, Producer}
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{Command, ConsumerLogic, Response}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{Request, ConsumerLogic, Response}
 import be.broij.akka.stream.operators.diverge.OneToOne.Pull
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -22,7 +22,7 @@ class AnycastWithPriorities[T, P: Ordering](source: Source[T, NotUsed], val rest
   protected lazy val selfRef: AnycastWithPriorities[T, P] = this
   protected lazy val out: Outlet[T] = Outlet[T](s"anycastWithPriorities.out")
 
-  override protected def producerBehavior(): Behavior[Command] = Producer(source).behavior()
+  override protected def producerBehavior(): Behavior[Request] = Producer(source).behavior()
   def shape: SourceShape[T] = SourceShape(out)
 
   def withPriority(priority: P): Source[T, NotUsed] = Source.fromGraph(new GraphStage[SourceShape[T]] {
@@ -30,7 +30,7 @@ class AnycastWithPriorities[T, P: Ordering](source: Source[T, NotUsed], val rest
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
       new ConsumerLogic(selfRef) {
-        override protected def onPullCommand(replyTo: ActorRef[Response]): Command =
+        override protected def onPullCommand(replyTo: ActorRef[Response]): Request =
           Pull(consumerId, nextItemId, replyTo)
         override def consumer(): BehaviorBased.Consumer = Consumer(consumerId, priority)
       }

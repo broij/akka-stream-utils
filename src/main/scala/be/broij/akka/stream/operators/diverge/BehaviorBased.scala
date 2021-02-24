@@ -7,7 +7,7 @@ import akka.actor.typed.scaladsl.adapter.{ClassicActorSystemOps, TypedActorRefOp
 import akka.stream.{Outlet, SourceShape}
 import akka.stream.stage.{GraphStageLogic, OutHandler}
 import akka.util.Timeout
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{Command, ConsumerLogic, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{Request, ConsumerLogic, Register, Registered, Response, Unregister, Unregistered}
 import scala.concurrent.{ExecutionContext, TimeoutException}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
@@ -19,13 +19,13 @@ trait BehaviorBased[T] {
   val restartSource: Boolean
   val baseTimeoutDelay: FiniteDuration
   protected val out: Outlet[T]
-  protected var producer: ActorRef[Command] = _
+  protected var producer: ActorRef[Request] = _
   protected var nextConsumerId: BigInt = -1
   protected var consumerCount = 0
   protected var completed = false
   protected var failed: Option[Throwable] = None
 
-  protected def producerBehavior(): Behavior[Command]
+  protected def producerBehavior(): Behavior[Request]
   protected def shape: SourceShape[T]
 
   protected def preStartIncarnation(incarnation: ConsumerLogic[T]): Unit = synchronized {
@@ -95,15 +95,15 @@ trait BehaviorBased[T] {
 }
 
 object BehaviorBased {
-  trait Command
+  trait Request
   trait Response
   trait Consumer {
     val id: BigInt
   }
 
   case class BaseConsumer(id: BigInt) extends Consumer
-  case class Register[C <: Consumer](consumer: C, replyTo: ActorRef[Response]) extends Command
-  case class Unregister[C <: Consumer](consumer: C, replyTo: ActorRef[Response]) extends Command
+  case class Register[C <: Consumer](consumer: C, replyTo: ActorRef[Response]) extends Request
+  case class Unregister[C <: Consumer](consumer: C, replyTo: ActorRef[Response]) extends Request
   case object Registered extends Response
   case object Unregistered extends Response
   case class Offer[T](itemId: BigInt, item: T) extends Response
@@ -141,7 +141,7 @@ object BehaviorBased {
       )
     }
 
-    protected def onPullCommand(replyTo: ActorRef[Response]): Command
+    protected def onPullCommand(replyTo: ActorRef[Response]): Request
     def consumer(): Consumer
   }
 }
