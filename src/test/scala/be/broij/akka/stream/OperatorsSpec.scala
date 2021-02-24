@@ -72,9 +72,9 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       do {
         probe.request(1)
         probe.expectNextOrComplete() match {
-          case Left(_) if last != 3 => assert(condition = false)
+          case Left(_) if last != 3 => assert(false)
           case Right(e) =>
-            if (e < last) assert(condition = false)
+            if (e < last) assert(false)
             else last = e
         }
       } while (last != 3)
@@ -92,10 +92,10 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       @tailrec
       def validate(probe: TestSubscriber.Probe[Int], i: Int): Assertion =
         if (i > 5) {
-          assert(condition = false)
+          assert(false)
         } else {
           probe.expectNextOrError() match {
-            case Left(_) => assert(condition = true)
+            case Left(_) => assert(true)
             case Right(_) => validate(probe, i + 1)
           }
         }
@@ -132,7 +132,7 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       @tailrec
       def validate(probe: TestSubscriber.Probe[Int]): Assertion =
         probe.expectNextOrError() match {
-          case Left(_) => assert(condition = true)
+          case Left(_) => assert(true)
           case Right(_) => validate(probe)
         }
 
@@ -167,7 +167,7 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       @tailrec
       def validate(probe: TestSubscriber.Probe[Int]): Assertion =
         probe.expectNextOrError() match {
-          case Left(_) => assert(condition = true)
+          case Left(_) => assert(true)
           case Right(_) => validate(probe)
         }
 
@@ -202,7 +202,7 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       @tailrec
       def validate(probe: TestSubscriber.Probe[Int]): Assertion =
         probe.expectNextOrError() match {
-          case Left(_) => assert(condition = true)
+          case Left(_) => assert(true)
           case Right(_) => validate(probe)
         }
 
