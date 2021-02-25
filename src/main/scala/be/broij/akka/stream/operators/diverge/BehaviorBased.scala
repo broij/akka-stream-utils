@@ -45,7 +45,7 @@ trait BehaviorBased[T] {
   protected def register(incarnation: ConsumerLogic[T], timeoutDelay: FiniteDuration): Unit = synchronized {
     implicit val timeout: Timeout = Timeout(timeoutDelay)
     producer.ask {
-      replyTo: ActorRef[Response] =>Register(incarnation.consumer(), replyTo)
+      replyTo: ActorRef[Response] => Register(incarnation.consumer(), replyTo)
     }.onComplete(
       incarnation.getAsyncCallback[Try[Response]] {
         case Success(Registered) =>
