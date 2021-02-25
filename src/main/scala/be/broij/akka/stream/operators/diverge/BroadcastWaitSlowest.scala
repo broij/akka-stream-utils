@@ -39,8 +39,6 @@ object BroadcastWaitSlowest {
 
   class Producer[T](source: Source[T, NotUsed], bufferSize: Int)(implicit materializer: Materializer) {
     protected lazy val stream: SinkQueueWithCancel[T] = source.toMat(Sink.queue[T]())(Keep.right).run()
-    protected lazy val registeredConsumers = mutable.Set.empty[BigInt]
-    protected lazy val unregisteredConsumers = mutable.Set.empty[BigInt]
     protected lazy val buffer = Array.ofDim[Future[Option[T]]](bufferSize)
     protected lazy val pullsMap = mutable.Map.empty[BigInt, Pull]
     protected lazy val pendingPulls: mutable.SortedSet[Pull] = mutable.SortedSet.empty[Pull](Ordering.fromLessThan {
@@ -120,8 +118,7 @@ object BroadcastWaitSlowest {
 
     def behavior(consumerCount: BigInt = 0, latestItemId: BigInt = -1): Behavior[Request] =
       Behaviors.receive {
-        case (context, Pull(consumerId, requestId, replyTo))
-            if registeredConsumers.contains(consumerId) && !unregisteredConsumers.contains(consumerId) =>
+        case (context, Pull(consumerId, requestId, replyTo)) =>
           val itemId = nearestItem(requestId, latestItemId)
           updateCommitLog(itemId - 1, consumerId)
           updatePendingPulls(Pull(consumerId, itemId, replyTo))
@@ -129,30 +126,14 @@ object BroadcastWaitSlowest {
           resolvePendingPulls(updatedLatestItemId)(context.executionContext)
           behavior(consumerCount, updatedLatestItemId)
         case (_, Register(BaseConsumer(consumerId), replyTo)) =>
-          if (unregisteredConsumers.contains(consumerId)) {
-            replyTo ! Unregistered
-            Behaviors.same
-          } else if (registeredConsumers.contains(consumerId)) {
-            replyTo ! Registered
-            Behaviors.same
-          } else {
-            replyTo ! Registered
-            registeredConsumers += consumerId
-            updateCommitLog(-1, consumerId)
-            behavior(consumerCount + 1, latestItemId)
-          }
+          replyTo ! Registered
+          updateCommitLog(-1, consumerId)
+          behavior(consumerCount + 1, latestItemId)
         case (_, Unregister(BaseConsumer(consumerId), replyTo)) =>
-          if (unregisteredConsumers.contains(consumerId)) {
-            replyTo ! Unregistered
-            Behaviors.same
-          } else {
-            replyTo ! Unregistered
-            registeredConsumers -= consumerId
-            unregisteredConsumers += consumerId
-            removeCommits(consumerId)
-            removePendingPull(consumerId)
-            behavior(consumerCount - 1, latestItemId)
-          }
+          replyTo ! Unregistered
+          removeCommits(consumerId)
+          removePendingPull(consumerId)
+          behavior(consumerCount - 1, latestItemId)
       }
   }
 
