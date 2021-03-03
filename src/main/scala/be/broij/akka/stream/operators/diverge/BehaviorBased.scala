@@ -51,7 +51,7 @@ trait BehaviorBased[T] {
         case Success(Registered) =>
           incarnation.isRegistered = true
           if (incarnation.isAvailable(out)) incarnation.pull(baseTimeoutDelay)
-        case Success(Closed) => incarnation.completeStage()
+        case Success(Closed) => producerCompleted(incarnation)
         case Success(Fail(reason)) => producerFailed(incarnation, reason)
         case Failure(reason) =>
           if (reason.isInstanceOf[TimeoutException]
@@ -76,7 +76,8 @@ trait BehaviorBased[T] {
       producer.ask {
         replyTo: ActorRef[Response] => Unregister(incarnation.consumer(), replyTo)
       }.onComplete {
-        case Success(Unregistered) | Success(Closed) =>
+        case Success(Unregistered) =>
+        case Success(Closed) => producerCompleted(incarnation)
         case Success(Fail(reason)) => producerFailed(incarnation, reason)
         case Failure(reason) =>
           if (reason.isInstanceOf[TimeoutException]
