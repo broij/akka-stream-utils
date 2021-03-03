@@ -8,7 +8,8 @@ import akka.actor.typed.scaladsl.adapter.ClassicActorSystemOps
 import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
 import akka.stream.scaladsl.{Keep, Sink, SinkQueueWithCancel, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic}
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Closed, Request, ConsumerLogic, Fail, Offer, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{BaseConsumer, Closed, ConsumerLogic, Fail, Offer, Register, Registered, Request, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.Broadcast.forwardItemTo
 import be.broij.akka.stream.operators.diverge.BroadcastWaitSlowest.{Producer, Pull}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -93,11 +94,7 @@ object BroadcastWaitSlowest {
     protected def resolvePendingPulls(latestItemId: BigInt)(implicit executionContext: ExecutionContext): Unit = {
       val completedPulls = pendingPulls.to(Pull(null, latestItemId, null))
       completedPulls.foreach {
-        case Pull(consumerId, itemId, replyTo) => buffer((itemId % bufferSize).toInt).onComplete {
-          case Success(Some(item)) => replyTo ! Offer(itemId, item)
-          case Success(None) => replyTo ! Closed
-          case Failure(reason) => replyTo ! Fail(reason)
-        }
+        case Pull(consumerId, itemId, replyTo) => forwardItemTo(buffer, bufferSize, itemId, replyTo)
         nPendingPulls -= 1
         pullsMap -= consumerId
       }
