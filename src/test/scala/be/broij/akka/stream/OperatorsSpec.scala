@@ -10,12 +10,10 @@ import akka.testkit.{ImplicitSender, TestKit}
 import be.broij.akka.stream.SourceExtensions.{AnycastSourceConversion, AnycastWithPrioritiesSourceConversion, BalanceSourceConversion, BroadcastSourceConversion, CaptureMaterializedValuesSourceConversion, ConcatenateSourceConversion, DistinctKeySourceConversion, FilterConsecutivesSourceConversion, JoinFairlySourceConversion, JoinSourceConversion, JoinWithPrioritiesSourceConversion, PartitionSourceConversion, ReorderSourceConversion, SwitchSourceConversion, TimedSlidingWindowSourceConversion, TimedWindowSourceConversion, WeightedSlidingWindowSourceConversion, WeightedWindowSourceConversion}
 import be.broij.akka.stream.operators.{SlidingWindow, Window}
 import com.typesafe.config.ConfigFactory
-
 import java.time.ZonedDateTime
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationDouble
 import scala.collection.immutable.Seq
