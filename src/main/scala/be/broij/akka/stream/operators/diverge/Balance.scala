@@ -39,7 +39,6 @@ object Balance {
     protected lazy val requestsMap = mutable.Map.empty[BigInt, Pull]
     protected lazy val consumingOrder: ArrayBuffer[BigInt] = mutable.ArrayBuffer.empty[BigInt]
 
-    override def isNext(consumerId: BigInt): Boolean = consumingOrder.headOption.contains(consumerId)
     override def itemSent(): Unit = {
       val consumerId = consumingOrder.remove(0)
       consumingOrder += consumerId

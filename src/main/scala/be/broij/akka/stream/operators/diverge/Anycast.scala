@@ -35,7 +35,6 @@ object Anycast {
       extends OneToOne.Producer[T, BaseConsumer](source) {
      protected var requestsMap = mutable.Map.empty[BigInt, Pull]
 
-     override def isNext(consumerId: BigInt): Boolean = true
      override def itemSent(): Unit = requestsMap = requestsMap.tail
      override def addRequest(request: Pull): Unit = requestsMap += request.consumerId -> request
      override def nextRequest(): Option[Pull] = requestsMap.headOption.map(_._2)

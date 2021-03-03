@@ -29,6 +29,12 @@ object OneToOne {
               replyTo ! Closed
               Behaviors.same
           }
+        case (_, Register(_, replyTo)) =>
+          replyTo ! Closed
+          Behaviors.same
+        case (_, Unregister(_, replyTo)) =>
+          replyTo ! Unregistered
+          Behaviors.same
         case _ => Behaviors.same
       }
 
@@ -43,6 +49,12 @@ object OneToOne {
               replyTo ! fail
               Behaviors.same
           }
+        case (_, Register(_, replyTo)) =>
+          replyTo ! fail
+          Behaviors.same
+        case (_, Unregister(_, replyTo)) =>
+          replyTo ! fail
+          Behaviors.same
         case _ => Behaviors.same
       }
 
@@ -54,21 +66,28 @@ object OneToOne {
               replyTo ! response
               Behaviors.same
             case None =>
-              bufferizedItem match {
-                case Some(item) if isNext(consumerId) =>
-                  val response = Offer(itemId, item)
-                  memory += consumerId -> response
-                  replyTo ! response
-                  itemSent()
-                  behavior(queueAvailable, None)
-                case None =>
-                  addRequest(request)
-                  if (queueAvailable && isNext(consumerId)) {
-                    context.self ! FetchItem
-                    behavior(queueAvailable = false, bufferizedItem)
-                  } else {
-                    Behaviors.same
+              addRequest(request)
+              nextRequest() match {
+                case Some(Pull(consumerId, itemId, replyTo)) =>
+                  bufferizedItem match {
+                    case Some(item) =>
+                      val response = Offer(itemId, item)
+                      memory += consumerId -> response
+                      replyTo ! response
+                      itemSent()
+                      nextRequest() match {
+                        case Some(_) =>
+                          context.self ! FetchItem
+                          behavior(queueAvailable = false, None)
+                        case None =>
+                          behavior(queueAvailable, None)
+                      }
+                    case None if queueAvailable =>
+                      context.self ! FetchItem
+                      behavior(queueAvailable = false, bufferizedItem)
+                    case _ => Behaviors.same
                   }
+                case None =>  Behaviors.same
               }
           }
         case (context, FetchItem) =>
@@ -113,7 +132,6 @@ object OneToOne {
           }
       }
 
-    def isNext(consumerId: BigInt): Boolean
     def itemSent(): Unit
     def addRequest(request: Pull): Unit
     def nextRequest(): Option[Pull]

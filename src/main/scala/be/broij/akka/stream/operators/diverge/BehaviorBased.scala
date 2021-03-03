@@ -7,7 +7,7 @@ import akka.actor.typed.scaladsl.adapter.{ClassicActorSystemOps, TypedActorRefOp
 import akka.stream.{Outlet, SourceShape}
 import akka.stream.stage.{GraphStageLogic, OutHandler}
 import akka.util.Timeout
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{Request, ConsumerLogic, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{Closed, ConsumerLogic, Fail, Register, Registered, Request, Response, Unregister, Unregistered}
 import scala.concurrent.{ExecutionContext, TimeoutException}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
@@ -51,7 +51,8 @@ trait BehaviorBased[T] {
         case Success(Registered) =>
           incarnation.isRegistered = true
           if (incarnation.isAvailable(out)) incarnation.pull(baseTimeoutDelay)
-        case Success(Unregistered) => incarnation.completeStage()
+        case Success(Closed) => incarnation.completeStage()
+        case Success(Fail(reason)) => producerFailed(incarnation, reason)
         case Failure(reason) =>
           if (reason.isInstanceOf[TimeoutException]
             && reason.getMessage.startsWith("A")) register(incarnation, timeoutDelay * 2)
@@ -75,7 +76,8 @@ trait BehaviorBased[T] {
       producer.ask {
         replyTo: ActorRef[Response] => Unregister(incarnation.consumer(), replyTo)
       }.onComplete {
-        case Success(Unregistered) =>
+        case Success(Unregistered) | Success(Closed) =>
+        case Success(Fail(reason)) => producerFailed(incarnation, reason)
         case Failure(reason) =>
           if (reason.isInstanceOf[TimeoutException]
             && reason.getMessage.startsWith("A")) unregister(incarnation, timeoutDelay * 2)

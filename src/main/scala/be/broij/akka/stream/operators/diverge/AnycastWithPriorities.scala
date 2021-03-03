@@ -47,7 +47,6 @@ object AnycastWithPriorities {
       Ordering.by(_._2)
     )
 
-    override def isNext(consumerId: BigInt): Boolean = requestsMap.headOption.map(_._1._1).contains(consumerId)
     override def itemSent(): Unit = requestsMap = requestsMap.tail
     override def addRequest(request: Pull): Unit = prioritiesMap.get(request.consumerId).foreach {
       priority => requestsMap += (request.consumerId, priority) -> request
