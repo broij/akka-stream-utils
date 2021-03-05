@@ -66,17 +66,17 @@ object Balance {
     * the others. Each element is sent to one of its consumers. The n first elements are sent to the first consumer, 
     * then the n next elements are sent to the second consumer and so on so forth in a circular fashion. The constant n 
     * is a parameter giving the amount of elements to send to an individual consumer before switching to the next. The 
-    * source completes when the producer completes. It fails when the producer or any of its consumers fails. The job of 
-    * the producer is to emit the elements of the wrapped source to the registered consumers. It manages a dynamic group 
-    * of consumers that grows or shrinks as consumers register and unregister. A special flag called restartSource 
-    * allows to specify how the producer should react when there is no more consumers. When the flag is set to true, the 
-    * producer will stop the wrapped source and restart it from the beginning when some new consumer register. When set 
-    * to false, it will let the wrapped source continue to execute. If an element sent to a consumer isn't ackowledged 
-    * to the producer before a FiniteDuration defined by baseTimeoutDelay, the element is sent again to that consumer. 
-    * This duration is increased exponentially by a power of two each time the same element is sent again to the same 
-    * consumer. Note that this mecanism is completely transparent for the final user: nothing more than providing that 
-    * baseTimeoutDelay is expected to be done by the user; when an element is received several time by the same consumer 
-    * due to retransmissions, it will appear only once in the corresponding stream.
+    * source completes when the producer completes. It fails when the producer fails. The job of the producer is to emit
+    * the elements of the wrapped source to the registered consumers. It manages a dynamic group of consumers that grows
+    * or shrinks as consumers register and unregister. A special flag called restartSource allows to specify how the
+    * producer should react when there is no more consumers. When the flag is set to true, the producer will stop the
+    * wrapped source and restart it from the beginning when some new consumer register. When set to false, it will let
+    * the wrapped source continue to execute. If an element sent to a consumer isn't acknowledged to the producer before
+    * a FiniteDuration defined by baseTimeoutDelay, the element is sent again to that consumer. This duration is
+    * increased exponentially by a power of two each time the same element is sent again to the same consumer. Note that
+    * this mechanism is completely transparent for the final user: nothing more than providing that baseTimeoutDelay is
+    * expected to be done by the user; when an element is received several times by the same consumer due to
+    * retransmissions, it will appear only once in the corresponding stream.
     */
   def apply[T](source: Source[T, NotUsed], n: BigInt, restartSource: Boolean, baseTimeoutDelay: FiniteDuration)
               (implicit actorSystem: ActorSystem): Source[T, NotUsed] =

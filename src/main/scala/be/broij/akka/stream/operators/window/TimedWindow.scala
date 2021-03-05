@@ -32,11 +32,11 @@ object TimedWindow {
   /**
    * Creates a flow working on streams where each element has an associated timestamp obtained with the function timeOf.
    * Let us call t(n) the timestamp associated to the nth element of such a stream. The flow assumes the elements are 
-   * emitted in the order dictacted by their timestamps: for each n < m we have that t(n) < t(m). It turns such a stream 
+   * emitted in the order dictated by their timestamps: for each n < m we have that t(n) < t(m). It turns such a stream
    * of elements into a stream of windows. Each window is a sequence of timestamp-ordered elements giving the set of 
    * elements whose timestamps are included in a given time interval. Let l(n) be the index of the last element of the 
    * nth window. The index of the first element of the nth window is f(n) = l(n-1) + 1. The first window starts with the
-   * first element of the stream: f(0) = 0. The nth window contains the elements that occured in the 
+   * first element of the stream: f(0) = 0. The nth window contains the elements that occurred in the
    * [t(f(n)), t(f(n)) + maxPeriod] time interval. The maxPeriod parameter defines the duration of the time intervals of
    * each window.
    */

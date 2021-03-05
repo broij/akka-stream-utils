@@ -212,6 +212,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
   }
 
+  "Aggregate" must {
+    "send downstream the elements sent by the producers with an ordering defined by the specified flattening " +
+      "operator" in {
+
+    }
+  }
+
   "Window" must {
     "assemble windows of two elements when using a frame that does so" in {
       Source(1 to 11)
