@@ -5,7 +5,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Keep, Sink, SinkQueueWithCancel, Source}
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{Closed, Request, Consumer, Fail, Offer, Register, Registered, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{Completed, Request, Consumer, Failed, Offer, Register, Registered, Response, Unregister, Unregistered}
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
@@ -26,11 +26,11 @@ object OneToOne {
               replyTo ! response
               Behaviors.same
             case _ =>
-              replyTo ! Closed
+              replyTo ! Completed
               Behaviors.same
           }
         case (_, Register(_, replyTo)) =>
-          replyTo ! Closed
+          replyTo ! Completed
           Behaviors.same
         case (_, Unregister(_, replyTo)) =>
           replyTo ! Unregistered
@@ -38,7 +38,7 @@ object OneToOne {
         case _ => Behaviors.same
       }
 
-    protected def failedBehavior(fail: Fail): Behavior[Request] =
+    protected def failedBehavior(fail: Failed): Behavior[Request] =
       Behaviors.receive {
         case (_, Pull(consumerId, itemId, replyTo)) =>
           memory.get(consumerId).filter(_.itemId == itemId) match {
@@ -94,7 +94,7 @@ object OneToOne {
           context.pipeToSelf(stream.pull())(FetchResult(_))
           Behaviors.same
         case (_, FetchResult(Success(None))) =>
-          requests().foreach(_.replyTo ! Closed)
+          requests().foreach(_.replyTo ! Completed)
           clearRequests()
           completedBehavior()
         case (context, FetchResult(Success(Some(item: T)))) =>
@@ -113,9 +113,9 @@ object OneToOne {
             case None => behavior(queueAvailable = true, Some(item))
           }
         case (_, FetchResult(Failure(reason))) =>
-          requests().foreach(_.replyTo ! Fail(reason))
+          requests().foreach(_.replyTo ! Failed(reason))
           clearRequests()
-          failedBehavior(Fail(reason))
+          failedBehavior(Failed(reason))
         case (_, Register(consumer: C, replyTo)) =>
           register(consumer)
           replyTo ! Registered

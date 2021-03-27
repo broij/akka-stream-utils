@@ -4,7 +4,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.actor.typed.ActorRef
 import akka.stream.scaladsl.Source
-import be.broij.akka.stream.operators.diverge.BehaviorBased.{Closed, Fail, Offer, Response}
+import be.broij.akka.stream.operators.diverge.BehaviorBased.{Completed, Failed, Offer, Response}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -15,8 +15,8 @@ object Broadcast {
                                          (implicit executionContext: ExecutionContext): Unit = {
     buffer((itemId % bufferSize).toInt).onComplete {
       case Success(Some(item)) => destination ! Offer(itemId, item)
-      case Success(None) => destination ! Closed
-      case Failure(reason) => destination ! Fail(reason)
+      case Success(None) => destination ! Completed
+      case Failure(reason) => destination ! Failed(reason)
     }
   }
 
