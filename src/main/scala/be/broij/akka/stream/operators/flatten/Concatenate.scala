@@ -42,6 +42,11 @@ class Concatenate[T] extends GraphStage[FlowShape[Graph[SourceShape[T], NotUsed]
 
       setHandler(out, new OutHandler {
         override def onPull(): Unit = currentSink.map(_.pull()).getOrElse(pull(in))
+
+        override def onDownstreamFinish(cause: Throwable): Unit = {
+          currentSink.foreach(_.cancel(cause))
+          super.onDownstreamFinish(cause)
+        }
       })
     }
 }

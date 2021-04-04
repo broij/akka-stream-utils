@@ -4,7 +4,9 @@ import akka.NotUsed
 import akka.stream.{Attributes, FlowShape, Graph, Inlet, Outlet, SourceShape}
 import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[BigInt])
     extends GraphStage[FlowShape[Graph[SourceShape[T], NotUsed], T]] {
@@ -17,6 +19,7 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
     new GraphStageLogic(shape) {
       val buffer: mutable.PriorityQueue[(T, SubSinkInlet[T])] = mutable.PriorityQueue.empty(Ordering.by(priorityOfItem))
+      val sinks: ListBuffer[SubSinkInlet[T]] = ListBuffer.empty
       var nSinks = 0
       var exhausted = false
 
@@ -35,6 +38,7 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
 
             override def onUpstreamFinish(): Unit = {
               nSinks -= 1
+              sinks -= sink
               if (exhausted && nSinks == 0 && buffer.isEmpty) completeStage()
             }
           })
@@ -46,6 +50,7 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
 
           sink.pull()
           nSinks += 1
+          sinks += sink
           if (breadth.forall(_ > nSinks)) pull(in)
         }
 
@@ -64,6 +69,8 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
             if (exhausted) completeStage()
             else pull(in)
           }
+
+        override def onDownstreamFinish(cause: Throwable): Unit = sinks.foreach(_.cancel(cause))
       })
     }
   }

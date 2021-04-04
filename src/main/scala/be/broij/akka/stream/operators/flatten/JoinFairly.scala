@@ -75,6 +75,11 @@ class JoinFairly[T](n: BigInt, breadth: Option[BigInt])
             if (currentSink == null) startUsing(sinks.remove(0))
             else currentSink.pull()
           } else pull(in)
+
+        override def onDownstreamFinish(cause: Throwable): Unit = {
+          sinks.foreach(_.cancel(cause))
+          if (currentSink != null) currentSink.cancel(cause)
+        }
       })
     }
 }

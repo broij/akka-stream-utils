@@ -15,6 +15,7 @@ class Join[T](breadth: Option[BigInt]) extends GraphStage[FlowShape[Graph[Source
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new GraphStageLogic(shape) {
       val buffer: ListBuffer[(T, SubSinkInlet[T])] = ListBuffer.empty
+      val sinks: ListBuffer[SubSinkInlet[T]] = ListBuffer.empty
       var nSinks = 0
       var exhausted = false
 
@@ -30,6 +31,7 @@ class Join[T](breadth: Option[BigInt]) extends GraphStage[FlowShape[Graph[Source
 
             override def onUpstreamFinish(): Unit = {
               nSinks -= 1
+              sinks -= sink
               if (exhausted) {
                 if (nSinks == 0 && buffer.isEmpty) completeStage()
               } else if (breadth.forall(_ > nSinks)) pull(in)
@@ -43,6 +45,7 @@ class Join[T](breadth: Option[BigInt]) extends GraphStage[FlowShape[Graph[Source
 
           sink.pull()
           nSinks += 1
+          sinks += sink
           if (breadth.forall(_ > nSinks)) pull(in)
         }
 
@@ -59,6 +62,8 @@ class Join[T](breadth: Option[BigInt]) extends GraphStage[FlowShape[Graph[Source
             if (exhausted) completeStage()
             else pull(in)
           }
+
+        override def onDownstreamFinish(cause: Throwable): Unit = sinks.foreach(_.cancel(cause))
       })
     }
 }
