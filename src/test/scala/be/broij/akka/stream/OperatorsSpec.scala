@@ -60,6 +60,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
         .concatenate.runWith(TestSink.probe[Int])
         .request(6).expectNextN(1 to 5).expectError()
     }
+
+    "cancel when downstream cancels" in {
+      val (probe, stream) = TestSource.probe[Int].preMaterialize()
+      Source(List(stream))
+        .concatenate.to(Sink.foreach[Int](_ => throw new Exception("Fake exception"))).run()
+      probe.sendNext(1).expectCancellation()
+    }
   }
 
   "Switch" must {
@@ -107,6 +114,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
         0
       )
     }
+
+    "cancel when downstream cancels" in {
+      val (probe, stream) = TestSource.probe[Int].preMaterialize()
+      Source(List(stream))
+        .switch.to(Sink.foreach[Int](_ => throw new Exception("Fake exception"))).run()
+      probe.sendNext(1).expectCancellation()
+    }
   }
 
   "Join" must {
@@ -141,6 +155,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
           .join(None).throttle(1, 0.1.seconds).runWith(TestSink.probe[Int])
           .request(7)
       )
+    }
+
+    "cancel when downstream cancels" in {
+      val (probe, stream) = TestSource.probe[Int].preMaterialize()
+      Source(List(stream))
+        .join(None).to(Sink.foreach[Int](_ => throw new Exception("Fake exception"))).run()
+      probe.sendNext(1).expectCancellation()
     }
   }
 
@@ -177,6 +198,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
           .request(7)
       )
     }
+
+    "cancel when downstream cancels" in {
+      val (probe, stream) = TestSource.probe[Int].preMaterialize()
+      Source(List(stream))
+        .joinFairly(2, None).to(Sink.foreach[Int](_ => throw new Exception("Fake exception"))).run()
+      probe.sendNext(1).expectCancellation()
+    }
   }
 
   "JoinWithPriorities" must {
@@ -211,6 +239,13 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
           .joinWithPriorities(identity[Int], None).throttle(1, 0.1.seconds).runWith(TestSink.probe[Int])
           .request(7)
       )
+    }
+
+    "cancel when downstream cancels" in {
+      val (probe, stream) = TestSource.probe[Int].preMaterialize()
+      Source(List(stream))
+        .joinWithPriorities(identity[Int], None).to(Sink.foreach[Int](_ => throw new Exception("Fake exception"))).run()
+      probe.sendNext(1).expectCancellation()
     }
   }
 
@@ -256,14 +291,29 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       probe.expectComplete()
     }
 
-    "fail when downstream fails" in {
+    "continue when upstream fails" in {
+      val (probe, sink) = TestSink.probe[Int].preMaterialize()
+      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.to(sink), false, 1.seconds)
+
+      val src1 = TestSource.probe[Int].to(aggregate).run()
+      src1.sendError(new Exception("Fake exception"))
+      probe.request(2)
+      src1.sendNext(2)
+      val src2 = TestSource.probe[Int].to(aggregate).run()
+      src2.sendNext(1)
+      probe.expectNext(1)
+      probe.expectNoMessage()
+    }
+
+    "cancel when downstream cancels" in {
       val aggregate = Aggregate(
         Flow[Source[Int, NotUsed]].concatenate.to(Sink.foreach(_ => throw new Exception("Fake exception"))), false,
         1.seconds
       )
 
-      //callback
-      Source(1 to 10).to(aggregate).run
+      val probe = TestSource.probe[Int].to(aggregate).run()
+      probe.sendNext(1)
+      probe.expectCancellation()
     }
   }
 
@@ -798,6 +848,21 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       partitionedSource(1).runWith(TestSink.probe[Int]).request(1).expectError()
       partitionedSource(2).runWith(TestSink.probe[Int]).request(1).expectError()
     }
+
+    "continue when downstream cancels" in {
+      val partitionedSource = Source(List(1, 1, 2, 2, 1, 1, 2, 2, 1, 1))
+        .partition(restartSource = false, identity[Int], waitSlowest = false, 5, 1.seconds)
+
+      val probe0 = partitionedSource(1).runWith(TestSink.probe[Int])
+      val probe1 = partitionedSource(1).runWith(TestSink.probe[Int])
+      val probe2 = partitionedSource(2).runWith(TestSink.probe[Int])
+
+      probe0.request(2).expectNext(1 , 1)
+      probe1.request(2).expectNext(1 , 1)
+      probe2.request(5).expectNext(2, 2, 2, 2).expectComplete()
+      probe0.cancel()
+      probe1.request(4).expectNext(1, 1, 1).expectComplete()
+    }
   }
 
   "Partition wait slowest" must {
@@ -857,6 +922,22 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
 
       partitionedSource(1).runWith(TestSink.probe[Int]).request(1).expectError()
       partitionedSource(2).runWith(TestSink.probe[Int]).request(1).expectError()
+    }
+
+    "continue when downstream cancels" in {
+      val partitionedSource = Source(List(1, 1, 2, 2, 1, 1, 2, 2, 1, 1))
+        .partition(restartSource = false, identity[Int], waitSlowest = true, 5, 1.seconds)
+
+      val probe0 = partitionedSource(1).runWith(TestSink.probe[Int])
+      val probe1 = partitionedSource(1).runWith(TestSink.probe[Int])
+      val probe2 = partitionedSource(2).runWith(TestSink.probe[Int])
+
+      probe0.request(1).expectNext(1).expectNoMessage()
+      probe1.request(1).expectNext(1).expectNoMessage()
+      probe2.request(5).expectNext(2, 2).expectNoMessage()
+      probe0.cancel()
+      probe1.request(5).expectNext(1, 1, 1, 1, 1).expectComplete()
+      probe2.expectNext(2, 2).expectComplete()
     }
   }
 }
