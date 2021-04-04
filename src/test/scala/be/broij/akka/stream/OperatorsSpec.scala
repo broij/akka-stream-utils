@@ -2,8 +2,8 @@ package be.broij.akka.stream
 
 import akka.actor.ActorSystem
 import akka.NotUsed
-import akka.stream.KillSwitches
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.{ActorMaterializer, KillSwitches, OverflowStrategy}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
 import akka.stream.testkit.TestSubscriber
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.{ImplicitSender, TestKit}
@@ -12,10 +12,12 @@ import be.broij.akka.stream.SourceExtensions.{AnycastSourceConversion, AnycastWi
 import be.broij.akka.stream.operators.flatten.Aggregate
 import be.broij.akka.stream.operators.{SlidingWindow, Window}
 import com.typesafe.config.ConfigFactory
+
 import java.time.ZonedDateTime
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationDouble
 import scala.collection.immutable.Seq
@@ -256,7 +258,7 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
         .viaMat(KillSwitches.single[Int])(Keep.right)
         .toMat(TestSink.probe[Int])(Keep.both).preMaterialize()
 
-      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.to(sink), false, 1.seconds)
+      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.map(e => { System.err.println(e); e }).to(sink), false, 1.seconds)
 
       Source(1 to 5).to(aggregate).run()
       probe.request(1).expectNext(1)
@@ -306,14 +308,29 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
 
     "cancel when downstream cancels" in {
-      val aggregate = Aggregate(
-        Flow[Source[Int, NotUsed]].concatenate.to(Sink.foreach(_ => throw new Exception("Fake exception"))), false,
+      /*val aggregate = Aggregate(
+        Flow[Source[Int, NotUsed]].concatenate.to(Sink.foreach(e => {System.err.println(e); throw new Exception("Fake exception") })), false,
         1.seconds
       )
 
       val probe = TestSource.probe[Int].to(aggregate).run()
       probe.sendNext(1)
-      probe.expectCancellation()
+      probe.sendNext(2)
+      probe.sendNext(3)
+      probe.sendNext(4)
+
+      probe.expectCancellation()*/
+
+      implicit val system: ActorSystem = ActorSystem("QuickStart")
+      val (queue, source) = Source.queue[Int](0, OverflowStrategy.backpressure).preMaterialize()
+
+      source.map { e =>
+        System.err.println(e)
+        e
+      }.to(Sink.foreach(_ => throw new Exception("prout"))).run()
+      //queue.offer(1).map(System.err.println(_))//(as.dispatcher)
+      //queue.offer(2).map(System.err.println(_))//(as.dispatcher)
+
     }
   }
 
