@@ -50,6 +50,11 @@ class Join[T](breadth: Option[BigInt]) extends GraphStage[FlowShape[Graph[Source
         }
 
         override def onUpstreamFinish(): Unit = exhausted = true
+
+        override def onUpstreamFailure(ex: Throwable): Unit = {
+          sinks.foreach(_.cancel(ex))
+          super.onUpstreamFailure(ex)
+        }
       })
 
       setHandler(out, new OutHandler {
@@ -63,7 +68,10 @@ class Join[T](breadth: Option[BigInt]) extends GraphStage[FlowShape[Graph[Source
             else pull(in)
           }
 
-        override def onDownstreamFinish(cause: Throwable): Unit = sinks.foreach(_.cancel(cause))
+        override def onDownstreamFinish(cause: Throwable): Unit = {
+          sinks.foreach(_.cancel(cause))
+          super.onDownstreamFinish(cause)
+        }
       })
     }
 }

@@ -67,6 +67,12 @@ class JoinFairly[T](n: BigInt, breadth: Option[BigInt])
         }
 
         override def onUpstreamFinish(): Unit = exhausted = true
+
+        override def onUpstreamFailure(ex: Throwable): Unit = {
+          sinks.foreach(_.cancel(ex))
+          if (currentSink != null) currentSink.cancel(ex)
+          super.onUpstreamFailure(ex)
+        }
       })
 
       setHandler(out, new OutHandler {
@@ -79,6 +85,7 @@ class JoinFairly[T](n: BigInt, breadth: Option[BigInt])
         override def onDownstreamFinish(cause: Throwable): Unit = {
           sinks.foreach(_.cancel(cause))
           if (currentSink != null) currentSink.cancel(cause)
+          super.onDownstreamFinish(cause)
         }
       })
     }

@@ -4,7 +4,6 @@ import akka.NotUsed
 import akka.stream.{Attributes, FlowShape, Graph, Inlet, Outlet, SourceShape}
 import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -55,6 +54,11 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
         }
 
         override def onUpstreamFinish(): Unit = exhausted = true
+
+        override def onUpstreamFailure(ex: Throwable): Unit = {
+          sinks.foreach(_.cancel(ex))
+          super.onUpstreamFailure(ex)
+        }
       })
 
       setHandler(out, new OutHandler {
@@ -70,7 +74,10 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
             else pull(in)
           }
 
-        override def onDownstreamFinish(cause: Throwable): Unit = sinks.foreach(_.cancel(cause))
+        override def onDownstreamFinish(cause: Throwable): Unit = {
+          sinks.foreach(_.cancel(cause))
+          super.onDownstreamFinish(cause)
+        }
       })
     }
   }
