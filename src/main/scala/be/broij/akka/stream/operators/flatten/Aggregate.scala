@@ -34,17 +34,14 @@ class Aggregate[T](flatteningOperator: Sink[Source[T, NotUsed], NotUsed], restar
   def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new ProducerLogic(this)
 
   protected def preStartIncarnation(incarnation: ProducerLogic[T]): Unit = synchronized {
-    System.err.println("preStart")
     producerCount += 1
     nextProducerId += 1
     incarnation.producerId = nextProducerId
     if (consumerCompleted) incarnation.completeStage()
     else if (consumerFailed.nonEmpty) incarnation.failStage(consumerFailed.get)
     else {
-      if (producerCount == 1 && consumer == null) {
-        System.err.println("spawning")
+      if (producerCount == 1 && consumer == null)
         consumer = actorSystem.spawnAnonymous(Consumer(flatteningOperator).behavior())
-      }
       register(incarnation, baseTimeoutDelay)
     }
   }
@@ -67,12 +64,8 @@ class Aggregate[T](flatteningOperator: Sink[Source[T, NotUsed], NotUsed], restar
   }
 
   protected def postStopIncarnation(incarnation: ProducerLogic[T]): Unit = synchronized {
-    System.err.println("postStop")
     if (producerCount == 1 && (restartSink || consumerCompleted || consumerFailed.nonEmpty)) {
-      if (consumer != null) {
-        System.err.println(s"killing $consumerCompleted $consumerFailed")
-        actorSystem.stop(consumer.toClassic)
-      }
+      if (consumer != null) actorSystem.stop(consumer.toClassic)
       consumer = null
     }
     producerCount -= 1
@@ -167,9 +160,8 @@ object Aggregate {
     val producers = mutable.Map.empty[BigInt, SourceQueueWithComplete[T]]
     val commitLog = mutable.Map.empty[BigInt, BigInt]
     val inProgress = mutable.Map.empty[BigInt, BigInt]
-    lazy val sourcesQueue: SourceQueueWithComplete[Source[T, NotUsed]] = {
+    lazy val sourcesQueue: SourceQueueWithComplete[Source[T, NotUsed]] =
       Source.queue(0, OverflowStrategy.backpressure).to(flatteningOperator).run()
-    }
 
     protected def completedBehavior(): Behavior[Request] =
       Behaviors.receive {
@@ -248,11 +240,11 @@ object Aggregate {
             case Success(QueueOfferResult.Failure(exception)) =>
               commitLog += producerId -> rollbackId
               replyTo ! ProducerFailed(exception)
-              Behaviors.same
+              failedBehavior(ConsumerFailed(exception))
             case Failure(_) | Success(QueueOfferResult.QueueClosed) =>
               commitLog += producerId -> rollbackId
               replyTo ! ProducerCompleted
-              Behaviors.same
+              completedBehavior()
             case Success(QueueOfferResult.Dropped) =>
               commitLog += producerId -> rollbackId
               Behaviors.same
