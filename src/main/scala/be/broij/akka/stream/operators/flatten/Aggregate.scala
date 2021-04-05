@@ -250,7 +250,7 @@ object Aggregate {
               Behaviors.same
           }
         case (_, Unregister(producerId, replyTo)) =>
-          producers.get(producerId).foreach(_.complete())
+          producers.remove(producerId).foreach(_.complete())
           commitLog.remove(producerId)
           inProgress.remove(producerId)
           replyTo ! Unregistered
