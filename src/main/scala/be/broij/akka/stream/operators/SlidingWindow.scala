@@ -16,7 +16,7 @@ class SlidingWindow[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F])
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new GraphStageLogic(shape) {
-      var frame: Frame[T] =  frameFactory()
+      var frame: Frame[T] = frameFactory()
 
       setHandler(in, new InHandler {
         override def onPush(): Unit = {
