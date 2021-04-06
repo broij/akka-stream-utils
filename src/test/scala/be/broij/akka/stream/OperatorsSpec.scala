@@ -308,29 +308,19 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     }
 
     "cancel when downstream cancels" in {
-      /*val aggregate = Aggregate(
-        Flow[Source[Int, NotUsed]].concatenate.to(Sink.foreach(e => {System.err.println(e); throw new Exception("Fake exception") })), false,
+      val aggregate = Aggregate(
+        Flow[Source[Int, NotUsed]].concatenate.to(Sink.foreach(_ => throw new Exception("Fake exception") )), false,
         1.seconds
       )
 
       val probe = TestSource.probe[Int].to(aggregate).run()
       probe.sendNext(1)
+      //TODO: Wait a bit so that the queue to get failed
+      //      This should be removed if possible
+      Thread.sleep(1000)
       probe.sendNext(2)
-      probe.sendNext(3)
-      probe.sendNext(4)
 
-      probe.expectCancellation()*/
-
-      implicit val system: ActorSystem = ActorSystem("QuickStart")
-      val (queue, source) = Source.queue[Int](0, OverflowStrategy.backpressure).preMaterialize()
-
-      source.map { e =>
-        System.err.println(e)
-        e
-      }.to(Sink.foreach(_ => throw new Exception("prout"))).run()
-      //queue.offer(1).map(System.err.println(_))//(as.dispatcher)
-      //queue.offer(2).map(System.err.println(_))//(as.dispatcher)
-
+      probe.expectCancellation()
     }
   }
 
@@ -758,7 +748,9 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       val probe1 = balanceSource.runWith(TestSink.probe[Int])
       val probe2 = balanceSource.runWith(TestSink.probe[Int])
       val probe3 = balanceSource.runWith(TestSink.probe[Int])
-      Thread.sleep(100) //sleep a bit to make sure probe 4 is the last consumer registered
+      //TODO: Sleep a bit to make sure probe 4 is the last consumer registered
+      //      This should be removed if possible
+      Thread.sleep(100)
       val probe4 = balanceSource.viaMat(KillSwitches.single)(Keep.right).toMat(TestSink.probe[Int])(Keep.both).run()
       probe0.request(11)
       probe1.request(11)
@@ -792,7 +784,9 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       val probe0 = balanceSource.viaMat(KillSwitches.single)(Keep.right).toMat(TestSink.probe[Int])(Keep.both).run()
       probe0._2.request(2).expectNext(1, 2)
       val probe1 = balanceSource.viaMat(KillSwitches.single)(Keep.right).toMat(TestSink.probe[Int])(Keep.both).run()
-      Thread.sleep(100) //sleep a bit to make sure probe1 is registered before probe0 shutdown
+      //TODO: Sleep a bit to make sure probe1 is registered before probe0 shutdown
+      //      This should be removed if possible
+      Thread.sleep(100)
       probe0._1.shutdown()
       probe0._2.expectComplete()
       probe1._2.request(8).expectNextN(3 to 10)
