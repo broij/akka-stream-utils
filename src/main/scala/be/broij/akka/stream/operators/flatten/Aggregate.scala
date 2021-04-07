@@ -4,13 +4,13 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.AskPattern.Askable
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior, Scheduler}
+import akka.actor.typed.{ActorRef, Behavior, PostStop, Scheduler}
 import akka.actor.typed.scaladsl.adapter.{ClassicActorSystemOps, TypedActorRefOps}
 import akka.stream.{Attributes, Inlet, Materializer, OverflowStrategy, QueueOfferResult, SinkShape}
 import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
 import akka.util.Timeout
-import be.broij.akka.stream.operators.flatten.Aggregate.{Consumer, ConsumerCompleted, ConsumerFailed, ProducerCompleted, ProducerFailed, ProducerLogic, Register, Registered, Request, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.flatten.Aggregate.{Consumer, ConsumerCompleted, ConsumerFailed, ProducerLogic, Register, Registered, Request, Response, Unregister, Unregistered}
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, TimeoutException}
@@ -194,7 +194,7 @@ object Aggregate {
     def behavior(): Behavior[Request] = aliveBehavior(false)
 
     private def aliveBehavior(registering: Boolean): Behavior[Request] =
-      Behaviors.receive {
+      Behaviors.receive[Request] {
         case (context, Register(producerId, replyTo)) =>
           if (registering) Behaviors.same
           else {
@@ -212,9 +212,13 @@ object Aggregate {
             case Success(QueueOfferResult.Failure(exception)) =>
               val response = ConsumerFailed(exception)
               replyTo ! response
+              producers.values.foreach(_.fail(exception))
+              sourcesQueue.fail(exception)
               failedBehavior(response)
             case Failure(_) | Success(QueueOfferResult.QueueClosed) =>
               replyTo ! ConsumerCompleted
+              producers.values.foreach(_.complete())
+              sourcesQueue.complete()
               completedBehavior()
             case Success(QueueOfferResult.Dropped) =>
               aliveBehavior(false)
@@ -240,10 +244,14 @@ object Aggregate {
             case Success(QueueOfferResult.Failure(exception)) =>
               commitLog += producerId -> rollbackId
               replyTo ! ProducerFailed(exception)
+              producers.values.foreach(_.fail(exception))
+              sourcesQueue.fail(exception)
               failedBehavior(ConsumerFailed(exception))
             case Failure(_) | Success(QueueOfferResult.QueueClosed) =>
               commitLog += producerId -> rollbackId
               replyTo ! ProducerCompleted
+              producers.values.foreach(_.complete())
+              sourcesQueue.complete()
               completedBehavior()
             case Success(QueueOfferResult.Dropped) =>
               commitLog += producerId -> rollbackId
@@ -254,6 +262,12 @@ object Aggregate {
           commitLog.remove(producerId)
           inProgress.remove(producerId)
           replyTo ! Unregistered
+          Behaviors.same
+      }.receiveSignal {
+        case (_, PostStop) =>
+          System.err.println("stopping!")
+          producers.values.foreach(_.complete())
+          sourcesQueue.complete()
           Behaviors.same
       }
   }

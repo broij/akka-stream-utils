@@ -2,27 +2,25 @@ package be.broij.akka.stream
 
 import akka.actor.ActorSystem
 import akka.NotUsed
-import akka.stream.{ActorMaterializer, KillSwitches, OverflowStrategy}
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source, SourceQueueWithComplete}
+import akka.stream.{KillSwitches, SubscriptionWithCancelException}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.testkit.TestSubscriber
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.{ImplicitSender, TestKit}
-import be.broij.akka.stream.FlowExtensions.{ConcatenateFlowConversion, JoinFlowConversion}
+import be.broij.akka.stream.FlowExtensions.ConcatenateFlowConversion
 import be.broij.akka.stream.SourceExtensions.{AnycastSourceConversion, AnycastWithPrioritiesSourceConversion, BalanceSourceConversion, BroadcastSourceConversion, CaptureMaterializedValuesSourceConversion, ConcatenateSourceConversion, DistinctKeySourceConversion, FilterConsecutivesSourceConversion, JoinFairlySourceConversion, JoinSourceConversion, JoinWithPrioritiesSourceConversion, PartitionSourceConversion, ReorderSourceConversion, SwitchSourceConversion, TimedSlidingWindowSourceConversion, TimedWindowSourceConversion, WeightedSlidingWindowSourceConversion, WeightedWindowSourceConversion}
 import be.broij.akka.stream.operators.flatten.Aggregate
 import be.broij.akka.stream.operators.{SlidingWindow, Window}
 import com.typesafe.config.ConfigFactory
-
 import java.time.ZonedDateTime
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationDouble
 import scala.collection.immutable.Seq
 import scala.math.Numeric.IntIsIntegral
-import scala.util.{Failure, Random, Success}
+import scala.util.Random
 
 class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     with ImplicitSender
@@ -258,7 +256,7 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
         .viaMat(KillSwitches.single[Int])(Keep.right)
         .toMat(TestSink.probe[Int])(Keep.both).preMaterialize()
 
-      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.map(e => { System.err.println(e); e }).to(sink), false, 1.seconds)
+      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.to(sink), false, 1.seconds)
 
       Source(1 to 5).to(aggregate).run()
       probe.request(1).expectNext(1)
@@ -273,24 +271,15 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
     "stop the sink when all producers unregister and then restart it as soon as there is a new registration when " +
       "restartSink is set to true" in {
       val (probe, sink) = TestSink.probe[Int].preMaterialize()
-      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.take(5).to(sink), true, 1.seconds)
-      //probe.request(6)
+      val aggregate = Aggregate(Flow[Source[Int, NotUsed]].concatenate.to(sink), true, 1.seconds)
 
       val s1 = TestSource.probe[Int].to(aggregate).run()
       s1.sendNext(1).sendNext(2).sendNext(3)
       s1.sendComplete()
-      //s1.expectCancellation()
+      probe.request(4).expectNextN(1 to 3).expectComplete()
       val s2 = TestSource.probe[Int].to(aggregate).run()
-      s2.sendNext(4).sendNext(5).sendNext(6)
-      val s3 = TestSource.probe[Int].to(aggregate).run()
-      s3.sendNext(7)
-      s2.sendComplete()
-      //s2.expectCancellation()
-      s3.sendNext(8).sendNext(9).sendNext(10)
-      //s2.expectCancellation()
-
-      probe.request(6).expectNextN(1 to 3)
-      probe.expectComplete()
+      //We expect the pre-materialized sink to be restarted but to cancel because it was detached
+      s2.expectCancellationWithCause(SubscriptionWithCancelException.StageWasCompleted)
     }
 
     "continue when upstream fails" in {

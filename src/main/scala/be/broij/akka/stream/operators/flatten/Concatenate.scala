@@ -23,8 +23,8 @@ class Concatenate[T] extends GraphStage[FlowShape[Graph[SourceShape[T], NotUsed]
             override def onPush(): Unit = push(out, sink.grab())
             override def onUpstreamFinish(): Unit = {
               currentSink = None
-              if (isAvailable(out)) pull(in)
               if (exhausted) completeStage()
+              else if (isAvailable(out)) pull(in)
             }
           })
 
