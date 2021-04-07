@@ -265,7 +265,6 @@ object Aggregate {
           Behaviors.same
       }.receiveSignal {
         case (_, PostStop) =>
-          System.err.println("stopping!")
           producers.values.foreach(_.complete())
           sourcesQueue.complete()
           Behaviors.same
