@@ -40,7 +40,7 @@ trait BehaviorBased[T] {
     }
   }
 
-  protected def register(incarnation: ConsumerLogic[T], timeoutDelay: FiniteDuration): Unit = {
+  protected def register(incarnation: ConsumerLogic[T], timeoutDelay: FiniteDuration): Unit = synchronized {
     implicit val timeout: Timeout = Timeout(timeoutDelay)
     producer.ask {
       replyTo: ActorRef[Response] => Register(incarnation.consumer(), replyTo)
@@ -68,7 +68,7 @@ trait BehaviorBased[T] {
     unregister(incarnation, baseTimeoutDelay)
   }
 
-  protected def unregister(incarnation: ConsumerLogic[T], timeoutDelay: FiniteDuration): Unit = {
+  protected def unregister(incarnation: ConsumerLogic[T], timeoutDelay: FiniteDuration): Unit = synchronized {
     if (producer != null) {
       implicit val timeout: Timeout = Timeout(timeoutDelay)
       producer.ask {
