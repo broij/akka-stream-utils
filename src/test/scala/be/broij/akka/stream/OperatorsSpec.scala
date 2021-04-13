@@ -275,8 +275,9 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
 
       val s1 = TestSource.probe[Int].to(aggregate).run()
       s1.sendNext(1).sendNext(2).sendNext(3)
+      probe.request(4).expectNextN(1 to 3)
       s1.sendComplete()
-      probe.request(4).expectNextOrComplete(1).expectNextOrComplete(2).expectNextOrComplete(3).expectComplete()
+      probe.expectComplete()
       val s2 = TestSource.probe[Int].to(aggregate).run()
       //We expect the pre-materialized sink to be restarted but to cancel because it was detached
       s2.expectCancellationWithCause(SubscriptionWithCancelException.StageWasCompleted)
