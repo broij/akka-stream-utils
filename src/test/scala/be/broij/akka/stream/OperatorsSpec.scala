@@ -427,6 +427,18 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       probeMat.request(5).expectNextN(1 to 4).expectComplete()
     }
 
+    //TODO:
+    "complete when upstream completes" in {
+      val (mats, probe) = Source.failed[Source[Int, Int]](new Exception("Fake exception"))
+        .captureMaterializedValues
+        .toMat(TestSink.probe[Source[Int, NotUsed]])(Keep.both).run()
+
+      val probeMat = mats.runWith(TestSink.probe[Int])
+
+      probe.request(1)
+      probeMat.request(1).expectError()
+    }
+
     "fail when upstream fails" in {
       val (mats, probe) = Source.failed[Source[Int, Int]](new Exception("Fake exception"))
         .captureMaterializedValues
@@ -436,6 +448,21 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
 
       probe.request(1)
       probeMat.request(1).expectError()
+    }
+
+    //TODO:
+    "complete when downstream completes" in {
+
+    }
+
+    //TODO:
+    "fail when downstream fails" in {
+
+    }
+
+    //TODO:
+    "continue when the materialized values stream fails or completes" in {
+
     }
   }
 
@@ -741,6 +768,7 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       //      This should be removed if possible
       Thread.sleep(100)
       val probe4 = balanceSource.viaMat(KillSwitches.single)(Keep.right).toMat(TestSink.probe[Int])(Keep.both).run()
+      Thread.sleep(100)
       probe0.request(11)
       probe1.request(11)
       probe2.request(11)

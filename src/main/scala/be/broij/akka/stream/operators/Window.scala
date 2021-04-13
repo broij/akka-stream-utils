@@ -32,7 +32,7 @@ class Window[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F])
 
         override def onUpstreamFinish(): Unit = {
           if (frame.nonEmpty) emit(out, frame.payloadSeq)
-          complete(out)
+          completeStage()
         }
       })
 

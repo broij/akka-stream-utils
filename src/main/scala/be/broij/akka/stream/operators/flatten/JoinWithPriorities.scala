@@ -55,9 +55,9 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
 
         override def onUpstreamFinish(): Unit = exhausted = true
 
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          sinks.foreach(_.cancel(ex))
-          super.onUpstreamFailure(ex)
+        override def onUpstreamFailure(throwable: Throwable): Unit = {
+          sinks.foreach(_.cancel(throwable))
+          failStage(throwable)
         }
       })
 
@@ -74,9 +74,9 @@ class JoinWithPriorities[T, P: Ordering](priorityOf: T => P, breadth: Option[Big
             else pull(in)
           }
 
-        override def onDownstreamFinish(cause: Throwable): Unit = {
-          sinks.foreach(_.cancel(cause))
-          super.onDownstreamFinish(cause)
+        override def onDownstreamFinish(throwable: Throwable): Unit = {
+          sinks.foreach(_.cancel(throwable))
+          failStage(throwable)
         }
       })
     }

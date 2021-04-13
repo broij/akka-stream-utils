@@ -36,12 +36,12 @@ class CaptureMaterializedValues[T, M](implicit mat: Materializer)
 
         override def onUpstreamFinish(): Unit = {
           queue.complete()
-          super.onUpstreamFinish()
+          completeStage()
         }
 
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          queue.fail(ex)
-          super.onUpstreamFailure(ex)
+        override def onUpstreamFailure(throwable: Throwable): Unit = {
+          queue.fail(throwable)
+          failStage(throwable)
         }
       })
 
