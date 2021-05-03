@@ -5,7 +5,7 @@ import akka.stream.scaladsl.Flow
 
 object DistinctKey {
   /**
-    * Creates a flow filtering out the elements whose key is the same than the one of the precedent element. The 
+    * Creates a flow filtering out the elements whose key is identical to the one of their preceding element. The
     * function keyOf is used to extract the keys of the elements.
     */
   def apply[T, K](keyOf: T => K): Flow[T, T, NotUsed] =

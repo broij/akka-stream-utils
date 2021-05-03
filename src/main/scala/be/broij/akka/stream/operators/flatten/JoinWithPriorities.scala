@@ -90,11 +90,11 @@ object JoinWithPriorities {
     * the streams embedded in a stream as substreams. The flow takes the first N substreams and join them by emitting 
     * all of their elements. The function priorityOf is used to attribute a priority to each elements and when several 
     * are available for emission, the one with the highest priority is emitted. When one of the substreams being joined 
-    * completes, the flow takes the next substream and continues its process with that substream added in the set of 
+    * completes, the flow takes the next substream and continues its process with that substream added to the set of
     * substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. 
     * It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at 
     * the same time is given by the parameter breadth. When that optional value is set None, there is no limit on the 
-    * maximum number to process simultaneously.
+    * maximum number of substreams to process simultaneously.
     */
   def apply[T, P: Ordering](priorityOf: T => P, breadth: Option[BigInt]): Flow[Source[T, NotUsed], T, NotUsed] =
     Flow.fromGraph(new JoinWithPriorities[T, P](priorityOf, breadth))

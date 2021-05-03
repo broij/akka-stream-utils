@@ -48,17 +48,17 @@ object Window {
     */
   trait Frame[T] {
     /**
-      * False if the window is assembled and the item can’t be added, true otherwise.
+      * False if the item can’t be added to the frame, true otherwise.
       */
     def canAdd(item: T): Boolean
 
     /**
-      * Adds the item to the frame.
+      * Creates a new frame containing all the items in the frame plus the given item.
       */
     def add(item: T): Frame[T]
 
     /**
-      * Gives the content of the frame as a sequence of elements.
+      * Gives the content of the frame as a sequence of elements
       */
     def payloadSeq: Seq[T]
 
@@ -84,8 +84,8 @@ object Window {
     * Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. To
     * build the windows, the flow consumes the elements one after the others. It starts with an empty frame F obtained
     * with the FrameFactory and tries to add each element it consumes to that frame. If an element can’t be added to the
-    * frame, the window it represents is emitted as a sequence of elements and a new frame containing that element is
-    * created with the FrameFactory to pursue the process of windowing the stream.
+    * frame, the window it represents is emitted and a new frame containing that element is created with the
+    * FrameFactory to pursue the process of windowing the stream.
     */
   def apply[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, Seq[T], NotUsed] =
     Flow.fromGraph(new Window[T, F])

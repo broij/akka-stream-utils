@@ -5,12 +5,12 @@
   - [DistinctKey](#distinctKey)
   - [FilterConsecutives](#filterConsecutives)
   - [CaptureMaterializedValues](#captureMaterializedValues)
-  - [Window](#window)
   - [WeightedWindow](#weightedWindow)
-  - [TimedWindow](#timedWindow)
-  - [SlidingWindow](#window)
   - [WeightedSlidingWindow](#weightedSlidingWindow)
+  - [TimedWindow](#timedWindow)
   - [TimedSlidingWindow](#timedSlidingWindow)
+  - [Window](#window)
+  - [SlidingWindow](#window)
   - [Reorder](#reorder)
   - [Flattening operators](#flattening-operators)
     - [Concatenate](#concatenate)
@@ -68,12 +68,12 @@ Source(List(Source(List("h", "el", "lo")), Source.empty, Source.single("w"), Sou
 ```
 
 # Operators
-The specification of each operator provided by the library is given in the following sections. In addition, one can refer to the [tests](/src/test/scala/be/broij/akka/stream/OperatorsSpec.scala) in order to have a practical understanding on how to use the respective operators and clear out any ambiguity.
+The specification of each operator provided by the library is given in the following sections.
 
 ## DistinctKey
 `DistinctKey[T, K](keyOf: T => K): Flow[T, T, NotUsed]`
 
-Creates a flow filtering out the elements whose key is the same as the one of the precedent element. The function _keyOf_ is used to extract the keys of the elements.
+Creates a flow filtering out the elements whose key is identical to the one of their preceding element. The function _keyOf_ is used to extract the keys of the elements.
 
 ![DistinctKeyExample](/images/example-distinctKey.png)
 *An example of the stream which is produced by applying the distinctKey operator to a stream of integers where the keyOf function is the identity function.*
@@ -81,7 +81,7 @@ Creates a flow filtering out the elements whose key is the same as the one of th
 ## FilterConsecutives
 `FilterConsecutives[T](shouldFilter: (Option[T], T) => Boolean): Flow[T, T, NotUsed]`
 
-Creates a flow filtering out the elements not matching the _shouldFilter_ predicate. The function _shouldFilter_ is a predicate taking as parameters an _Option_ wrapping the last element emitted (_None_ if no element was sent emitted yet) and the current element to be tested.
+Creates a flow filtering out the elements invalidating the shouldFilter predicate. The function shouldFilter is a predicate taking as parameters an Option wrapping the latest element emitted (None if no element was emitted yet) and the current element to be tested.
 
 ![FilterConsecutivesExample](/images/example-filterConsecutives.png)
 *An example of the stream which is produced by applying the filterConsecutives operator to a stream of integers. The predicate makes sure the integer are emitted in ascending order.*
@@ -95,55 +95,55 @@ CaptureMaterializedValues[T, M](
 
 Creates a flow working with streams of streams. Let us refer to the streams embedded in a stream as substreams. The flow erases the materialized value of each substream. Its materialized value is another stream where the n<sup>th</sup> element gives the materialized value of the n<sup>th</sup> substream. The _materializer_ is used to pre-materialize each substream in order to access their own materialized value.
 
-## Window
-`Window[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, Seq[T], NotUsed]`
-
-Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. The flow uses an implementation of the _Frame_ trait that has to be provided by the user. An instance of the _FrameFactory_ trait, _frameFactory_, must also be provided by the user. A frame represents a window being assembled. It defines several methods:
-- canAdd(item): False if the window is assembled and the item can’t be added, true otherwise;
-- add(item): Adds the item to the frame;
-- nonEmpty: True if the frame is not empty, false otherwise;
-- payloadSeq: Gives the content of the frame as a sequence of elements.
-
-The frame factory also defines several methods:
-- apply(): Creates an empty frame;
-- apply(item): Creates a frame containing the given item.
-
-To build the windows, the flow consumes the elements one after the others. It starts with an empty frame. It tries to add each element it consumes to that frame. If an element can’t be added to the frame, the window it represents is emitted as a sequence of elements and a new frame containing that element is created to pursue the process of windowing the stream.
-
 ## WeightedWindow
 `WeightedWindow[T, W: Numeric](maxWeight: W, weightOf: T => W): Flow[T, Seq[T], NotUsed]`
 
 Creates a flow working on streams where each element has an associated weight obtained with the function _weightOf_. Let us call w<sub>n</sub> the weight associated to the n<sup>th</sup> element of such a stream. The flow turns such a stream of elements into a stream of windows. Each window is the longest sequence of consecutive elements, kept in emission order, that starts with a given element and whose cumulative weight doesn't exceed _maxWeight_. The first window starts with the first element of the stream. Let l<sub>n</sub> be the index of the last element of the n<sup>th</sup> window. The index of the first element of the n<sup>th</sup> window is f<sub>n</sub> = l<sub>n-1</sub> + 1.
-
-## TimedWindow
-`TimedWindow[T](maxPeriod: FiniteDuration, timeOf: T => ZonedDateTime): Flow[T, Seq[T], NotUsed]`
-
-Creates a flow working on streams where each element has an associated timestamp obtained with the function _timeOf_. Let us call t<sub>n</sub> the timestamp associated to the n<sup>th</sup> element of such a stream. The flow assumes the elements are emitted in the order dictated by their timestamps: ![prec](https://render.githubusercontent.com/render/math?math=%5Cforall%20n%20%3C%20m%20%3A%20t_n%20%5Cleq%20t_m). It turns such a stream of elements into a stream of windows. Each window is a sequence of timestamp-ordered elements giving the set of elements whose timestamps are included in a given time interval. Let l<sub>n</sub> be the index of the last element of the n<sup>th</sup> window. The index of the first element of the n<sup>th</sup> window is f<sub>n</sub> = l<sub>n-1</sub> + 1. The first window starts with the first element of the stream: f<sub>0</sub> = 0. The n<sup>th</sup> window contains the elements that occurred in the [t<sub>f<sub>n</sub></sub>, t<sub>f<sub>n</sub></sub> + maxPeriod] time interval. The _maxPeriod_ parameter defines the duration of the time intervals of each window.
-
-## SlidingWindow
-`SlidingWindow[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, Seq[T], NotUsed]`
-
-Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. The flow uses an implementation of the _Frame_ trait that has to be provided by the user. An instance of the _FrameFactory_ trait, _frameFactory_, must also be provided by the user. A frame represents a window being assembled. It defines several methods:
-- canAdd(item): False if the window is assembled and the item can’t be added, true otherwise;
-- add(item): Adds the item to the frame;
-- shrink(item): Fits the frame so that the item can be added and adds it;
-- nonEmpty: True if the frame is not empty, false otherwise;
-- payloadSeq: Gives the content of the frame as a sequence of elements.
-
-The frame factory also defines several methods:
-- apply(): Creates a frame wrapping an empty window;
-
-To build the windows, the flow consumes the elements one after the others. It starts with an empty frame. It tries to add each element it consumes to that frame. If an element can’t be added to the frame, the window it represents is emitted as a sequence of elements and the frame is then fit to contain that element to pursue the process of windowing the stream.
 
 ## WeightedSlidingWindow
 `WeightedSlidingWindow[T, W: Numeric](maxWeight: W, weightOf: T => W): Flow[T, Seq[T], NotUsed]`
 
 Creates a flow working on streams where each element has an associated weight obtained with the function _weightOf_. Let us call w<sub>n</sub> the weight associated to the n<sup>th</sup> element of such a stream. The flow turns such a stream of elements into a stream of windows. Each window is the longest sequence of consecutive elements, kept in emission order, that starts with a given element and whose cumulative weight doesn't exceed _maxWeight_. The first window starts with the first element of the stream. Let l<sub>n</sub> be the index of the last element of the n<sup>th</sup> window. The n<sup>th</sup> + 1 window is fit to include the l<sub>n</sub> + 1 <sup>th</sup> element while repeating as many elements from the n<sup>th</sup> window as possible.
 
+## TimedWindow
+`TimedWindow[T](maxPeriod: FiniteDuration, timeOf: T => ZonedDateTime): Flow[T, Seq[T], NotUsed]`
+
+Creates a flow working on streams where each element has an associated timestamp obtained with the function _timeOf_. Let us call t<sub>n</sub> the timestamp associated to the n<sup>th</sup> element of such a stream. The flow assumes the elements are emitted in the order dictated by their timestamps: ![prec](https://render.githubusercontent.com/render/math?math=%5Cforall%20n%20%3C%20m%20%3A%20t_n%20%5Cleq%20t_m). It turns such a stream of elements into a stream of windows. Each window is a sequence of timestamp-ordered elements giving the set of elements whose timestamps are included in a given time interval. Let l<sub>n</sub> be the index of the last element of the n<sup>th</sup> window. The index of the first element of the n<sup>th</sup> window is f<sub>n</sub> = l<sub>n-1</sub> + 1. The first window starts with the first element of the stream: f<sub>0</sub> = 0. The n<sup>th</sup> window contains the elements that occurred in the [t<sub>f<sub>n</sub></sub>, t<sub>f<sub>n</sub></sub> + maxPeriod] time interval. The _maxPeriod_ parameter defines the duration of the time intervals of each window.
+
 ## TimedSlidingWindow
 `TimedSlidingWindow[T](maxPeriod: FiniteDuration, timeOf: T => ZonedDateTime): Flow[T, Seq[T], NotUsed]`
 
 Creates a flow working on streams where each element has an associated timestamp obtained with the function _timeOf_. Let us call t<sub>n</sub> the timestamp associated to the n<sup>th</sup> element of such a stream. The flow assumes the elements are emitted in the order dictated by their timestamps: ![prec](https://render.githubusercontent.com/render/math?math=%5Cforall%20n%20%3C%20m%20%3A%20t_n%20%5Cleq%20t_m). It turns such a stream of elements into a stream of windows. Each window is a sequence of timestamp-ordered elements giving the set of elements whose timestamps are included in a given time interval. The first window starts with the first element of the stream. Let f<sub>n</sub> be the index of the first element of the n<sup>th</sup> window. Such a window contains the elements that occurred in the [t<sub>f<sub>n</sub></sub>, t<sub>f<sub>n</sub></sub> + maxPeriod] time interval. The _maxPeriod_ parameter defines the duration of the time intervals of each window. Let l<sub>n</sub> be the index of the last element of the n<sup>th</sup> window. The n<sup>th</sup> + 1 window is fit to include the l<sub>n</sub> + 1 <sup>th</sup> element while repeating as many elements from the n<sup>th</sup> window as possible.
+
+## Window
+`Window[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, Seq[T], NotUsed]`
+
+Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. The flow uses an implementation of the trait `Frame[T]` that has to be provided by the user. An instance of the trait `FrameFactory[T, F <: Frame[T]]` must also be provided by the user. A frame represents a window being assembled. It defines several methods:
+- `canAdd(item: T): Boolean` False if the item can’t be added to the frame, true otherwise;
+- `add(item: T): Frame[T]` Creates a new frame containing all the items in the frame plus the given item;
+- `nonEmpty: Boolean` True if the frame is not empty, false otherwise;
+- `payloadSeq: Seq[T]` Gives the content of the frame as a sequence of elements.
+
+The frame factory also defines several methods:
+- `apply(): F` Creates an empty frame;
+- `apply(item: T): F` Creates a frame containing the given item.
+
+To build the windows, the flow consumes the elements one after the others. It starts with an empty frame. It tries to add each element it consumes to that frame. If an element can’t be added to the frame, the window it represents is emitted, and a new frame containing that element is created to pursue the process of windowing the stream.
+
+## SlidingWindow
+`SlidingWindow[T, F <: Frame[T]](implicit frameFactory: FrameFactory[T, F]): Flow[T, Seq[T], NotUsed]`
+
+Creates a flow turning streams of elements into streams of windows. Each window is a sequence of elements. The flow uses an implementation of the trait `Frame[T]` that has to be provided by the user. An instance of the trait `FrameFactory[T, F <: Frame[T]]` must also be provided by the user. A frame represents a window being assembled. It defines several methods:
+- `canAdd(item: T): Boolean` False if the item can’t be added to the frame, true otherwise;
+- `add(item: T): Frame[T]` Creates a new frame containing all the items in the frame plus the given item;
+- `shrink(item: T): Frame[T]` Creates a new frame containing as many items as possible from the frame plus the given item.
+- `nonEmpty: Boolean` True if the frame is not empty, false otherwise;
+- `payloadSeq: Seq[T]` Gives the content of the frame as a sequence of elements.
+
+The frame factory also defines several methods:
+- `apply(): F` Creates an empty frame;
+
+To build the windows, the flow consumes the elements one after the others. It starts with an empty frame. It tries to add each element it consumes to that frame. If an element can’t be added to the frame, the window it represents is emitted, and the frame is then fit to contain that element to pursue the process of windowing the stream.
 
 ## Reorder
 ```
@@ -183,22 +183,22 @@ Creates a flow using the _mapper_ function to turn each element of a stream in a
 ### Join
 `Join[T](breadth: Option[BigInt]): Flow[Source[T, NotUsed], T, NotUsed]`
 
-Creates a flattening operator. The result is a flow taking the first N substreams and joining them by emitting all of their elements one by one in a FIFO fashion. When one of the substreams being joined completes, the flow takes the next substream and continues its process with that substream added in the set of substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set _None_, there is no limit on the maximum number to process simultaneously.
+Creates a flattening operator. The result is a flow taking the first N substreams and joining them by emitting all of their elements one by one in a FIFO fashion. When one of the substreams being joined completes, the flow takes the next substream and continues its process with that substream added to the set of substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set _None_, there is no limit on the maximum number of substreams to process simultaneously.
 
 #### MapJoin
 `MapJoin[T, U](mapper: T => Source[U, NotUsed], breadth: Option[BigInt]): Flow[T, U, NotUsed]`
 
-Creates a flow using the _mapper_ function to turn each element of a stream in a substream and then flattening all of these substreams via the join operator. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set to _None_, there is no limit on the maximum number to process simultaneously.
+Creates a flow using the _mapper_ function to turn each element of a stream in a substream and then flattening all of these substreams via the join operator. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set to _None_, there is no limit on the maximum number of substreams to process simultaneously.
 
 ### JoinFairly
 `JoinFairly[T](n: BigInt, breadth: Option[BigInt]): Flow[Source[T, NotUsed], T, NotUsed]`
 
-Creates a flattening operator. The result is a flow taking the first M substreams and joining them by emitting the next n elements from the first substream being joined followed by the next n elements from the second substream being joined, and so on so forth. When one of the substreams being joined completes, the flow takes the next substream and continues its process with that substream added in the set of substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set _None_, there is no limit on the maximum number to process simultaneously.
+Creates a flattening operator. The result is a flow taking the first M substreams and joining them by emitting the next _n_ elements from the first substream being joined followed by the next _n_ elements from the second substream being joined, and so on so forth. When one of the substreams being joined completes, the flow takes the next substream and continues its process with that substream added to the set of substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set _None_, there is no limit on the maximum number of substreams to process simultaneously.
 
 #### MapJoinFairly
 `MapJoinFairly[T, U](n: BigInt, mapper: T => Source[U, NotUsed], breadth: Option[BigInt]): Flow[T, U, NotUsed]`
 
-Creates a flow using the _mapper_ function to turn each element of a stream in a substream and then flattening all of these substreams via the joinFairly operator. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set to _None_, there is no limit on the maximum number to process simultaneously.
+Creates a flow using the _mapper_ function to turn each element of a stream in a substream and then flattening all of these substreams via the joinFairly operator. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set to _None_, there is no limit on the maximum number of substreams to process simultaneously.
 
 ### JoinWithPriorities
 ```
@@ -207,7 +207,7 @@ JoinWithPriorities[T, P: Ordering](
 ): Flow[Source[T, NotUsed], T, NotUsed]
 ```
 
-Creates a flattening operator. The result is a flow taking the first N substreams and joining them by emitting all of their elements. The function priorityOf is used to attribute a priority to each element and when several are available for emission, the one with the highest priority is emitted. When one of the substreams being joined completes, the flow takes the next substream and continues its process with that substream added in the set of substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set _None_, there is no limit on the maximum number to process simultaneously.
+Creates a flattening operator. The result is a flow taking the first N substreams and joining them by emitting all of their elements. The function _priorityOf_ is used to attribute a priority to each element and when several are available for emission, the one with the highest priority is emitted. When one of the substreams being joined completes, the flow takes the next substream and continues its process with that substream added to the set of substreams it joins. The flow completes when the stream completes and all of its substreams have been processed. It fails when the stream fails or one of the substreams being processed fails. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set _None_, there is no limit on the maximum number of substreams to process simultaneously.
 
 #### MapJoinWithPriorities
 ```
@@ -216,10 +216,10 @@ MapJoinWithPriorities[T, U, P: Ordering](
 ): Flow[T, U, NotUsed]
 ```
 
-Creates a flow using the _mapper_ function to turn each element of a stream in a substream and then flattening all of these substreams via the joinWithPriorities operator. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set to _None_, there is no limit on the maximum number to process simultaneously.
+Creates a flow using the _mapper_ function to turn each element of a stream in a substream and then flattening all of these substreams via the joinWithPriorities operator. The number of substreams to join at the same time is provided by the user as an optional value called _breadth_. When that optional value is set to _None_, there is no limit on the maximum number of substreams to process simultaneously.
 
 ## Diverging operators
-These operators enable to build streaming scenarios where a dynamic set of consumers are connected to the same producer. They provide sources whose materializations are consumers emitting the elements they receive from a shared producer they register to. The job of the producer is to emit the elements of a wrapped source to the registered consumers. It manages a dynamic group of consumers that grows or shrinks as consumers register and unregister. In each of these operators, a special flag called _restartSource_ allows to specify how the producer should react when there is no more consumers. When the flag is set to _true_, the producer will stop the wrapped source and restart it from the beginning when some new consumer register. When set to _false_, it will let the wrapped source continue to execute. In each diverging operators, if an element sent to a consumer isn't acknowledged to the producer before a _FiniteDuration_ called _baseTimeoutDelay_, which is provided by the user, the element is sent again to that consumer. This duration is increased exponentially by a power of two each time the same element is sent again to the same consumer. Note that this mechanism is completely transparent for the final user:
+These operators enable to build streaming scenarios where a dynamic set of consumers are connected to the same producer. They provide sources whose materializations are consumers emitting the elements they receive from a shared producer they register to. The job of the producer is to emit the elements of a wrapped source to the registered consumers. It manages a dynamic group of consumers that grows or shrinks as consumers register and unregister. In each of these operators, a special flag called _restartSource_ allows specifying how the producer should react when there are no more consumers. If set to _true_, the producer will stop the wrapped source and restart it from the beginning when some new consumer register. If set to _false_, it will let the wrapped source continue to execute. In each diverging operators, if an element sent to a consumer isn't acknowledged to the producer before a _FiniteDuration_ called _baseTimeoutDelay_, which is provided by the user, the element is sent again to that consumer. This duration is increased exponentially by a power of two each time the same element is sent again to the same consumer. Note that this mechanism is completely transparent for the final user:
 - nothing more than providing that _baseTimeoutDelay_ is expected to be done by the user;
 - when an element is received several time by the same consumer due to retransmissions, it will appear only once in the corresponding stream.
 
@@ -238,7 +238,7 @@ AnycastWithPriorities[T, P: Ordering](source: Source[T, NotUsed], restartSource:
                                      (implicit actorSystem: ActorSystem): AnycastWithPriorities[T, P]
 ```
 
-Creates a diverging operator. The result is an object allowing to create sources whose materializations are consumers registered to the same producer. The producer emits the elements of the source it wraps one after the others. These sources can be created via the method:
+Creates a diverging operator. The result is an object allowing to create sources whose materializations are consumers registered to the same producer. The producer emits the elements of the source it wraps one after the others. The sources can be created via the method:
 ```
 AnycastWithPriorities.withPriority(priority: P): Source[T, NotUsed]
 ```

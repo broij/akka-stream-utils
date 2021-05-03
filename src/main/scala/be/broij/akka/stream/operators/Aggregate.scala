@@ -1,16 +1,17 @@
-package be.broij.akka.stream.operators.flatten
+package be.broij.akka.stream.operators
 
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.AskPattern.Askable
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior, PostStop, Scheduler}
 import akka.actor.typed.scaladsl.adapter.{ClassicActorSystemOps, TypedActorRefOps}
-import akka.stream.{Attributes, Inlet, Materializer, OverflowStrategy, QueueOfferResult, SinkShape}
+import akka.actor.typed.{ActorRef, Behavior, PostStop, Scheduler}
 import akka.stream.scaladsl.{Sink, Source, SourceQueueWithComplete}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler}
+import akka.stream._
 import akka.util.Timeout
-import be.broij.akka.stream.operators.flatten.Aggregate.{Consumer, ConsumerCompleted, ConsumerFailed, ProducerLogic, Register, Registered, Request, Response, Unregister, Unregistered}
+import be.broij.akka.stream.operators.Aggregate.{Consumer, ConsumerCompleted, ConsumerFailed, ProducerLogic, Register, Registered, Request, Response, Unregister, Unregistered}
+
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, TimeoutException}

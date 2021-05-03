@@ -5,9 +5,9 @@ import akka.stream.scaladsl.Flow
 
 object FilterConsecutives {
   /**
-    * Creates a flow filtering out the elements not matching the shouldFilter predicate. The function shouldFilter is a 
-    * predicate taking as parameters an Option wrapping the last element emitted (None if no element was sent emitted 
-    * yet) and the current element to be tested.
+    * Creates a flow filtering out the elements invalidating the shouldFilter predicate. The function shouldFilter is a
+    * predicate taking as parameters an Option wrapping the latest element emitted (None if no element was emitted yet)
+    * and the current element to be tested.
     */
   def apply[T](shouldFilter: (Option[T], T) => Boolean): Flow[T, T, NotUsed] =
     Flow[T].scan[(Option[T], Boolean)]((None, false)) {

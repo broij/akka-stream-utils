@@ -9,13 +9,14 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.{ImplicitSender, TestKit}
 import be.broij.akka.stream.FlowExtensions.ConcatenateFlowConversion
 import be.broij.akka.stream.SourceExtensions.{AnycastSourceConversion, AnycastWithPrioritiesSourceConversion, BalanceSourceConversion, BroadcastSourceConversion, CaptureMaterializedValuesSourceConversion, ConcatenateSourceConversion, DistinctKeySourceConversion, FilterConsecutivesSourceConversion, JoinFairlySourceConversion, JoinSourceConversion, JoinWithPrioritiesSourceConversion, PartitionSourceConversion, ReorderSourceConversion, SwitchSourceConversion, TimedSlidingWindowSourceConversion, TimedWindowSourceConversion, WeightedSlidingWindowSourceConversion, WeightedWindowSourceConversion}
-import be.broij.akka.stream.operators.flatten.Aggregate
-import be.broij.akka.stream.operators.{SlidingWindow, Window}
+import be.broij.akka.stream.operators.{Aggregate, SlidingWindow, Window}
 import com.typesafe.config.ConfigFactory
+
 import java.time.ZonedDateTime
 import org.scalatest.{Assertion, BeforeAndAfterAll}
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+
 import scala.annotation.tailrec
 import scala.concurrent.duration.DurationDouble
 import scala.collection.immutable.Seq
@@ -428,18 +429,6 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
       probeMat.request(5).expectNextN(1 to 4).expectComplete()
     }
 
-    //TODO:
-    "complete when upstream completes" in {
-      val (mats, probe) = Source.failed[Source[Int, Int]](new Exception("Fake exception"))
-        .captureMaterializedValues
-        .toMat(TestSink.probe[Source[Int, NotUsed]])(Keep.both).run()
-
-      val probeMat = mats.runWith(TestSink.probe[Int])
-
-      probe.request(1)
-      probeMat.request(1).expectError()
-    }
-
     "fail when upstream fails" in {
       val (mats, probe) = Source.failed[Source[Int, Int]](new Exception("Fake exception"))
         .captureMaterializedValues
@@ -449,21 +438,6 @@ class OperatorsSpec(_system: ActorSystem) extends TestKit(_system)
 
       probe.request(1)
       probeMat.request(1).expectError()
-    }
-
-    //TODO:
-    "complete when downstream completes" in {
-
-    }
-
-    //TODO:
-    "fail when downstream fails" in {
-
-    }
-
-    //TODO:
-    "continue when the materialized values stream fails or completes" in {
-
     }
   }
 

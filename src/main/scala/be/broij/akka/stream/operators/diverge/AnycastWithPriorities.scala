@@ -71,7 +71,7 @@ object AnycastWithPriorities {
   /**
     * Creates an object allowing to distribute the elements of a given source to several consumers. The object enables
     * to create sources whose materializations are consumers registered to the same producer. The producer emits the
-    * elements of the source it wraps one after the others. These sources can be created via the method 
+    * elements of the source it wraps one after the others. The sources can be created via the method
     * [[AnycastWithPriorities.withPriority]]. Each consumer is bound to the priority that is given when the source it 
     * materializes is created. Each element is sent to one of the consumers, taking the first one available or the one 
     * with the highest priority when several are available. The created sources complete when the producer completes. 

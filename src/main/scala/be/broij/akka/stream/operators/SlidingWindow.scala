@@ -48,12 +48,12 @@ object SlidingWindow {
     */
   trait Frame[T] {
     /**
-      * False if the window is assembled and the item can’t be added, true otherwise.
+      * False if the item can’t be added to the frame, true otherwise.
       */
     def canAdd(item: T): Boolean
 
     /**
-      * Adds the item to the frame.
+      * Creates a new frame containing all the items in the frame plus the given item.
       */
     def add(item: T): Frame[T]
 
@@ -63,7 +63,7 @@ object SlidingWindow {
     def payloadSeq: Seq[T]
 
     /**
-      * Fits the frame so that the item can be added and adds it to the frame.
+      * Creates a new frame containing as many items as possible from this frame plus the given item.
       */
     def shrink(item: T): Frame[T]
 
